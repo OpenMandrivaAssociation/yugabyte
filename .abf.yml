@@ -10,3 +10,4 @@ sources:
   overrides-7.7.0.tar.gz: 38963631d7e82cb4e227843a236ad658ba30e50f
   autorepr-0.3.0.tar.gz: 6b40dddc039656fe32960229985b18b58f39bc10
   bazel-5.3.1-linux-x86_64: 60faa9791cdbd5e35b882b8d4b07977ef9a488ee
+  clockbound-vendor.tar.xz: 390de81a49b7bf8341a43e0f1d652c60b84ea2a1

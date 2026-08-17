@@ -114,6 +114,31 @@ mkdir -p "$STAGING/offline/download"
 # Only the archives themselves; skip extracted src/ and build/ leftovers.
 find "$tp/download" -maxdepth 1 -type f -print0 | xargs -0 -I{} cp -a {} "$STAGING/offline/download/"
 
+echo "==> Vendor clockbound cargo crates (ABF has no crates.io)"
+cb_zip=$(find "$STAGING/offline/download" -maxdepth 1 -name 'clockbound-*.zip' | head -1)
+if [[ -z $cb_zip ]]; then
+	echo "ERROR: clockbound zip missing from thirdparty download/" >&2
+	exit 1
+fi
+cb_src=$STAGING/clockbound-src
+mkdir -p "$cb_src"
+unzip -q -d "$cb_src" "$cb_zip"
+cb_root=$(find "$cb_src" -mindepth 1 -maxdepth 1 -type d | head -1)
+(
+	cd "$cb_root"
+	cargo vendor vendor
+	mkdir -p .cargo
+	cat > .cargo/config.toml <<'EOF'
+[source.crates-io]
+replace-with = "vendored-sources"
+
+[source.vendored-sources]
+directory = "vendor"
+EOF
+)
+tar -C "$cb_root" -cJf "$WORKDIR/clockbound-vendor.tar.xz" vendor .cargo
+echo "Wrote $WORKDIR/clockbound-vendor.tar.xz"
+
 echo "==> Pack offline-deps tarball"
 tar -C "$STAGING/offline" -cJf "$WORKDIR/yugabyte-offline-deps-${VERSION}.tar.xz" download
 

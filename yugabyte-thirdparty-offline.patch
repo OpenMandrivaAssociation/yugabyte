@@ -13,9 +13,9 @@
  
      def build(self, builder: BuilderInterface) -> None:
          if not is_macos():
---- a/python/build_definitions/clockbound.py	2026-06-10 15:03:35.000000000 +0200
-+++ b/python/build_definitions/clockbound.py	2026-08-17 01:22:30.117685635 +0200
-@@ -50,11 +50,11 @@
+--- a/python/build_definitions/clockbound.py
++++ b/python/build_definitions/clockbound.py
+@@ -50,15 +50,31 @@
          log_prefix = builder.log_prefix(self)
          log("Building dependency %s using cargo", self.name)
  
@@ -30,6 +30,27 @@
              raise RuntimeError(
                  "cargo binary not found. Please check if Rust is installed.")
  
+-        builder.log_output(log_prefix, [cargo_bin, 'build', '--release'])
++        cargo_cmd = [cargo_bin, 'build', '--release']
++        # ABF has no network. The spec unpacks a `cargo vendor` tree and
++        # points YB_CLOCKBOUND_VENDOR at it.
++        vendor_root = os.environ.get('YB_CLOCKBOUND_VENDOR', '')
++        if vendor_root:
++            src_vendor = os.path.join(vendor_root, 'vendor')
++            src_cargo = os.path.join(vendor_root, '.cargo')
++            if os.path.isdir(src_vendor):
++                dest_vendor = os.path.join(os.getcwd(), 'vendor')
++                dest_cargo = os.path.join(os.getcwd(), '.cargo')
++                if not os.path.exists(dest_vendor):
++                    os.symlink(os.path.abspath(src_vendor), dest_vendor)
++                if not os.path.exists(dest_cargo) and os.path.isdir(src_cargo):
++                    os.symlink(os.path.abspath(src_cargo), dest_cargo)
++                cargo_cmd.append('--offline')
++
++        builder.log_output(log_prefix, cargo_cmd)
+ 
+     def lib_install_clockbound_ffi(self, builder: BuilderInterface) -> None:
+         """ cp target/release/libclockbound.a $INSTALL_PREFIX/lib """
 --- a/python/build_definitions/crcutil.py	2026-06-10 15:03:35.000000000 +0200
 +++ b/python/build_definitions/crcutil.py	2026-08-17 01:22:30.117966337 +0200
 @@ -30,12 +30,9 @@

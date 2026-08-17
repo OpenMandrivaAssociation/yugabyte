@@ -60,6 +60,8 @@ Source19:	https://pypi.io/packages/source/a/autorepr/autorepr-0.3.0.tar.gz
 # Bazel 5.3.1 — required for the abseil/tcmalloc forks. `abb store` this
 # binary; do not hand-edit checksums into .abf.yml.
 Source20:	bazel-5.3.1-linux-x86_64
+# cargo vendor of aws/clock-bound (ABF has no crates.io).
+Source21:	clockbound-vendor.tar.xz
 
 Patch0:		yugabyte-offline-system-compiler.patch
 Patch1:		yugabyte-thirdparty-offline.patch
@@ -209,6 +211,11 @@ mkdir -p %{_builddir}/yugabyte-db-thirdparty-%{thirdparty_commit}/download
 cp -a %{_builddir}/offline-deps/download/. \
 	%{_builddir}/yugabyte-db-thirdparty-%{thirdparty_commit}/download/
 
+# Vendored crates.io tree for clockbound (no network at build time).
+cd %{_builddir}
+mkdir -p clockbound-vendor
+tar -C clockbound-vendor -xf %{SOURCE21}
+
 # Yugabyte-only Python helpers → PYTHONPATH. No pip, no venv.
 cd %{_builddir}
 mkdir -p yb-python-vendor
@@ -267,6 +274,9 @@ jobs=${RPM_BUILD_NCPUS:-$(nproc)}
 if [ -z "$jobs" ] || [ "$jobs" -gt 16 ]; then
 	jobs=16
 fi
+
+# clockbound cargo --offline; see Source21.
+export YB_CLOCKBOUND_VENDOR=%{_builddir}/clockbound-vendor
 
 echo "==> Building yugabyte-db-thirdparty with system Clang"
 cd %{_builddir}/yugabyte-db-thirdparty-%{thirdparty_commit}
