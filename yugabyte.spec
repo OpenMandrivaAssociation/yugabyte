@@ -116,6 +116,8 @@ BuildRequires:	patchelf
 BuildRequires:	pkgconfig(ncurses)
 BuildRequires:	pkgconfig(protobuf)
 BuildRequires:	protobuf-compiler
+# opentelemetry-cpp find_package(nlohmann_json); no GitHub FetchContent.
+BuildRequires:	cmake(nlohmann_json)
 # Protobuf 32 headers use Abseil types (lts_20260526).
 BuildRequires:	lib64absl-devel
 BuildRequires:	rsync

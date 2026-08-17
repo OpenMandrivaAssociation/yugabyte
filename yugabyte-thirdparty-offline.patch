@@ -292,3 +292,15 @@
 +       if (str == NULL) {
 +         return INVALID_CERT;
 +       }
+--- a/python/build_definitions/otel.py
++++ b/python/build_definitions/otel.py
+@@ -40,7 +40,8 @@
+                                   '-DWITH_OTLP=ON',
+                                   '-DWITH_OTLP_HTTP=ON',
+                                   '-DWITH_BENCHMARK=OFF',
+-                                  "-DCMAKE_PREFIX_PATH={uninst};{common}".format(
++                                  # Prefer system nlohmann_json; do not git clone GitHub.
++                                  "-DCMAKE_PREFIX_PATH={uninst};{common};/usr".format(
+                                       uninst=builder.prefix,
+                                       common=installed_common_dir),
+                                   "-DOTELCPP_PROTO_PATH={path}".format(path=src_dir)],
