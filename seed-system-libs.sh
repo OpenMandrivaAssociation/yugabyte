@@ -15,7 +15,7 @@ for pcdir in /usr/lib64/pkgconfig /usr/share/pkgconfig; do
 		snappy icu-uc icu-i18n libuv krb5 libkeyutils libverto \
 		libpcre2-8 libhwy ldap lber uuid libunwind hiredis \
 		ncurses ncursesw tinfo form menu panel formw menuw panelw tinfow \
-		protobuf protobuf-lite; do
+		protobuf protobuf-lite libtcmalloc libprofiler; do
 		if [ -e "$pcdir/$pc.pc" ]; then
 			ln -sfn "$pcdir/$pc.pc" "$dest/lib/pkgconfig/$pc.pc"
 		fi
@@ -334,6 +334,23 @@ fi
 rm -f "$dest/lib/libgoogletcmalloc.so" "$dest/lib/libgoogletcmalloc.a"
 if [ -f "$dest/include/tcmalloc/malloc_extension.h" ]; then
 	rm -rf "$dest/include/tcmalloc"
+fi
+# Bundled gperftools 2.8.1 has no aarch64 stack walker. Use the system
+# 2.15 libs. FindGPerf still looks for libtcmalloc.a; GNU ld INPUT() is
+# enough because we link shared.
+link_so libtcmalloc.so
+link_so libprofiler.so
+if [ ! -e "$dest/lib/libtcmalloc.a" ] && [ -e "$libdir/libtcmalloc.so" ]; then
+	printf 'INPUT ( %s )\n' "$libdir/libtcmalloc.so" > "$dest/lib/libtcmalloc.a"
+fi
+if [ ! -e "$dest/lib/libprofiler.a" ] && [ -e "$libdir/libprofiler.so" ]; then
+	printf 'INPUT ( %s )\n' "$libdir/libprofiler.so" > "$dest/lib/libprofiler.a"
+fi
+if [ -d /usr/include/gperftools ]; then
+	ln -sfn /usr/include/gperftools "$dest/include/gperftools"
+fi
+if [ -d /usr/include/google ]; then
+	ln -sfn /usr/include/google "$dest/include/google"
 fi
 
 # Highway 1.3.0 vs system 1.4.0. Their 1.3.0 fails on clang 23

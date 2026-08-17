@@ -157,6 +157,8 @@ BuildRequires:	pkgconfig(libunwind)
 # No .pc; Yugabyte only needs backtrace.h + libbacktrace.so.
 BuildRequires:	lib64backtrace-devel
 BuildRequires:	pkgconfig(hiredis)
+# Bundled gperftools 2.8.1 cannot build stacktrace on aarch64.
+BuildRequires:	pkgconfig(libtcmalloc)
 BuildRequires:	cargo
 BuildRequires:	rust
 BuildRequires:	lib64boost-devel
@@ -296,7 +298,7 @@ sh %{SOURCE13} installed/common %{_libdir}
 sh %{SOURCE13} installed/uninstrumented %{_libdir}
 # diskann is only registered on x86_64; --skip of an unknown name fails.
 # Clang never registers bundled patchelf (GCC-only).
-tp_skip=llvm_libunwind,llvm_libcxx_with_abi,flex,bison,zlib,lz4,eigen,libedit,boost,curl,libxml2,openssl,openssl_fips,snappy,icu4c,libuv,krb5,openldap,libuuid,libkeyutils,libverto,libaio,pcre,hwy,libbacktrace,hiredis,redis_cli,ncurses,protobuf,abseil,tcmalloc
+tp_skip=llvm_libunwind,llvm_libcxx_with_abi,flex,bison,zlib,lz4,eigen,libedit,boost,curl,libxml2,openssl,openssl_fips,snappy,icu4c,libuv,krb5,openldap,libuuid,libkeyutils,libverto,libaio,pcre,hwy,libbacktrace,hiredis,redis_cli,ncurses,protobuf,abseil,tcmalloc,gperftools
 case $(uname -m) in
 x86_64) tp_skip=$tp_skip,diskann ;;
 esac

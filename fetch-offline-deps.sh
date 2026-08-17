@@ -98,7 +98,7 @@ esac
 	./build_thirdparty.sh \
 		--download-extract-only \
 		--skip-sanitizers \
-		--skip llvm_libunwind,llvm_libcxx_with_abi,flex,bison,zlib,lz4,eigen,libedit,boost,curl,libxml2,openssl,openssl_fips,snappy,icu4c,libuv,krb5,openldap,libuuid,libkeyutils,libverto,libaio,pcre,hwy${tp_skip_diskann:+,$tp_skip_diskann} \
+		--skip llvm_libunwind,llvm_libcxx_with_abi,flex,bison,zlib,lz4,eigen,libedit,boost,curl,libxml2,openssl,openssl_fips,snappy,icu4c,libuv,krb5,openldap,libuuid,libkeyutils,libverto,libaio,pcre,hwy,gperftools${tp_skip_diskann:+,$tp_skip_diskann} \
 		--compiler-family=clang \
 		--compiler-prefix=/usr
 )

@@ -125,8 +125,8 @@ diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindAbseil.cmake new/yugabyt
  find_package_handle_standard_args(ABSEIL REQUIRED_VARS
    ABSEIL_SHARED_LIB ABSEIL_STATIC_LIB)
 diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindGPerf.cmake new/yugabyte-db-2026.1.1.0/cmake_modules/FindGPerf.cmake
---- a/cmake_modules/FindGPerf.cmake	2026-08-06 03:52:33.000000000 +0200
-+++ b/cmake_modules/FindGPerf.cmake	2026-08-17 13:46:14.521562296 +0200
+--- a/cmake_modules/FindGPerf.cmake
++++ b/cmake_modules/FindGPerf.cmake
 @@ -23,6 +23,12 @@
  # or implied.  See the License for the specific language governing permissions and limitations
  # under the License.
@@ -140,6 +140,25 @@ diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindGPerf.cmake new/yugabyte
  FIND_LIBRARY(TCMALLOC_SHARED_LIB tcmalloc
    NO_CMAKE_SYSTEM_PATH
    NO_SYSTEM_ENVIRONMENT_PATH)
+@@ -36,6 +42,18 @@
+   NO_CMAKE_SYSTEM_PATH
+   NO_SYSTEM_ENVIRONMENT_PATH)
+ 
++# Distro gperftools may ship only shared libs.
++if(NOT TCMALLOC_STATIC_LIB)
++  find_library(TCMALLOC_STATIC_LIB tcmalloc
++    NO_CMAKE_SYSTEM_PATH
++    NO_SYSTEM_ENVIRONMENT_PATH)
++endif()
++if(NOT PROFILER_STATIC_LIB)
++  find_library(PROFILER_STATIC_LIB profiler
++    NO_CMAKE_SYSTEM_PATH
++    NO_SYSTEM_ENVIRONMENT_PATH)
++endif()
++
+ include(FindPackageHandleStandardArgs)
+ find_package_handle_standard_args(GOOGLE_PERFTOOLS REQUIRED_VARS
+   TCMALLOC_SHARED_LIB TCMALLOC_STATIC_LIB
 diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindHiredis.cmake new/yugabyte-db-2026.1.1.0/cmake_modules/FindHiredis.cmake
 --- a/cmake_modules/FindHiredis.cmake	2026-08-06 03:52:33.000000000 +0200
 +++ b/cmake_modules/FindHiredis.cmake	2026-08-17 13:46:14.521491125 +0200
