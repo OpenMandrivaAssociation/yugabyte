@@ -105,10 +105,11 @@ BuildRequires:	autoconf
 BuildRequires:	automake
 BuildRequires:	pkgconfig
 BuildRequires:	m4
-# gperftools/glog run autoreconf (AC_PROG_LIBTOOL). Use the m4 files
-# plus slibtool, not GNU libtool-base.
+# gperftools/glog run autoreconf (AC_PROG_LIBTOOL). slibtool is the
+# linker; crcutil's autogen.sh still calls libtoolize by name.
 BuildRequires:	libtool-autoconf-macros
 BuildRequires:	slibtool
+BuildRequires:	libtool-base
 BuildRequires:	bison
 BuildRequires:	flex
 BuildRequires:	patchelf
@@ -291,12 +292,17 @@ cd %{_builddir}/yugabyte-db-thirdparty-%{thirdparty_commit}
 mkdir -p installed/common installed/uninstrumented
 sh %{SOURCE13} installed/common %{_libdir}
 sh %{SOURCE13} installed/uninstrumented %{_libdir}
-# Clang never registers bundled patchelf (GCC-only), so it cannot be --skip'd.
+# diskann is only registered on x86_64; --skip of an unknown name fails.
+# Clang never registers bundled patchelf (GCC-only).
+tp_skip=llvm_libunwind,llvm_libcxx_with_abi,flex,bison,zlib,lz4,eigen,libedit,boost,curl,libxml2,openssl,openssl_fips,snappy,icu4c,libuv,krb5,openldap,libuuid,libkeyutils,libverto,libaio,pcre,hwy,libbacktrace,hiredis,redis_cli,ncurses,protobuf,abseil,tcmalloc
+case $(uname -m) in
+x86_64) tp_skip=$tp_skip,diskann ;;
+esac
 ./build_thirdparty.sh \
 	--compiler-family=clang \
 	--compiler-prefix=/usr \
 	--skip-sanitizers \
-	--skip llvm_libunwind,llvm_libcxx_with_abi,flex,bison,zlib,lz4,eigen,libedit,boost,curl,libxml2,openssl,openssl_fips,snappy,icu4c,libuv,krb5,openldap,libuuid,libkeyutils,libverto,libaio,pcre,hwy,libbacktrace,hiredis,redis_cli,ncurses,protobuf,abseil,tcmalloc,diskann \
+	--skip "$tp_skip" \
 	--skip-library-checking \
 	--make-parallelism="$jobs"
 

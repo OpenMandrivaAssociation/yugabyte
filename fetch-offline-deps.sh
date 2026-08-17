@@ -88,13 +88,17 @@ export HOME="$STAGING/home"
 mkdir -p "$HOME/logs"
 
 # Skip sanitizers, Yugabyte's libc++/libunwind, and the C/C++ bits we
-# take from the system.
+# take from the system. diskann is x86_64-only in thirdparty.
+tp_skip_diskann=
+case $(uname -m) in
+x86_64) tp_skip_diskann=diskann ;;
+esac
 (
 	cd "$tp"
 	./build_thirdparty.sh \
 		--download-extract-only \
 		--skip-sanitizers \
-		--skip llvm_libunwind,llvm_libcxx_with_abi,flex,bison,zlib,lz4,eigen,libedit,boost,curl,libxml2,openssl,openssl_fips,snappy,icu4c,libuv,krb5,openldap,libuuid,libkeyutils,libverto,libaio,pcre,hwy,diskann \
+		--skip llvm_libunwind,llvm_libcxx_with_abi,flex,bison,zlib,lz4,eigen,libedit,boost,curl,libxml2,openssl,openssl_fips,snappy,icu4c,libuv,krb5,openldap,libuuid,libkeyutils,libverto,libaio,pcre,hwy${tp_skip_diskann:+,$tp_skip_diskann} \
 		--compiler-family=clang \
 		--compiler-prefix=/usr
 )
