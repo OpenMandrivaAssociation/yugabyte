@@ -105,6 +105,10 @@ BuildRequires:	autoconf
 BuildRequires:	automake
 BuildRequires:	pkgconfig
 BuildRequires:	m4
+# gperftools/glog run autoreconf (AC_PROG_LIBTOOL). Use the m4 files
+# plus slibtool, not GNU libtool-base.
+BuildRequires:	libtool-autoconf-macros
+BuildRequires:	slibtool
 BuildRequires:	bison
 BuildRequires:	flex
 BuildRequires:	patchelf
@@ -263,7 +267,9 @@ mkdir -p "$HOME/logs" "$YB_OPT_BUILD_DIR"
 mkdir -p %{_builddir}/yb-tools
 ln -sfn %{_sourcedir}/bazel-5.3.1-linux-x86_64 %{_builddir}/yb-tools/bazel
 chmod +x %{_builddir}/yb-tools/bazel
+ln -sfn /usr/bin/slibtool %{_builddir}/yb-tools/libtool
 export PATH=%{_builddir}/yb-tools:$PATH
+export LIBTOOL=slibtool
 
 # python3 vs python: OpenMandriva's `python` is the current interpreter.
 export PYTHON=python
