@@ -1,0 +1,847 @@
+--- a/src/yb/util/format.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/util/format.h	2026-08-16 19:00:38.947990912 +0200
+@@ -78,7 +78,7 @@
+ 
+ template <class T>
+ class FormatValue<T, std::enable_if_t<std::is_convertible<T, const char*>::value &&
+-                                      !std::is_same<T, nullptr_t>::value>> {
++                                      !std::is_same<T, std::nullptr_t>::value>> {
+  public:
+   template<class U>
+   explicit FormatValue(const U& value) : value_(value), len_(strlen(value_)) {}
+--- a/src/yb/util/json_document.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/util/json_document.h	2026-08-16 19:03:02.673350977 +0200
+@@ -12,6 +12,7 @@
+ 
+ #pragma once
+ 
++#include <cstdint>
+ #include <memory>
+ #include <string>
+ #include <string_view>
+--- a/src/yb/util/logging.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/util/logging.cc	2026-08-16 19:03:02.687725289 +0200
+@@ -41,6 +41,7 @@
+ // See the License for the specific language governing permissions and
+ // limitations under the License.
+ 
++#include <fcntl.h>
+ #include <signal.h>
+ #include <stdio.h>
+ 
+--- a/src/yb/util/uuid.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/util/uuid.cc	2026-08-16 19:07:56.419618862 +0200
+@@ -183,7 +183,17 @@
+   unsigned int hash[kShaDigestSize];
+   sha1.process_bytes(boost_uuid_.data + kTimeUUIDMacOffset, kTimeUUIDTotalMacBytes);
+   uint8_t tmp[kTimeUUIDTotalMacBytes];
+-  sha1.get_digest(hash);
++  // Boost 1.87+ writes a 20-byte digest; older releases filled unsigned int[5]
++  // with the SHA-1 words. Rebuild those words so the MAC-hash bytes stay
++  // identical to stored TimeUUIDs.
++  boost::uuids::detail::sha1::digest_type digest;
++  sha1.get_digest(digest);
++  for (int i = 0; i < kShaDigestSize; ++i) {
++    hash[i] = (static_cast<unsigned int>(digest[i * 4]) << 24) |
++              (static_cast<unsigned int>(digest[i * 4 + 1]) << 16) |
++              (static_cast<unsigned int>(digest[i * 4 + 2]) << 8) |
++              (static_cast<unsigned int>(digest[i * 4 + 3]));
++  }
+   for (size_t i = 0; i < kTimeUUIDTotalMacBytes; i ++) {
+     tmp[i] = (hash[i % kShaDigestSize] & 255);
+     hash[i % kShaDigestSize] = hash[i % kShaDigestSize] >> 8;
+--- a/src/yb/util/cast.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/util/cast.h	2026-08-16 19:29:08.560255000 +0200
+@@ -13,6 +13,7 @@
+ 
+ #pragma once
+ 
++#include <cstdint>
+ #include <memory>
+ 
+ namespace yb {
+--- a/src/yb/util/net/sockaddr.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/util/net/sockaddr.cc	2026-08-16 19:05:51.982217049 +0200
+@@ -54,7 +54,7 @@
+   size_t seed = 0;
+ 
+   if (address.is_v4()) {
+-    boost::hash_combine(seed, address.to_v4().to_ulong());
++    boost::hash_combine(seed, address.to_v4().to_uint());
+   } else {
+     boost::hash_combine(seed, address.to_v6().to_bytes());
+   }
+@@ -75,7 +75,7 @@
+   boost::system::error_code ec;
+   // First of all we try to parse whole string as address w/o port.
+   // Important for IPv6 addesses like fe80::1:1.
+-  auto address = IpAddress::from_string(input, ec);
++  auto address = boost::asio::ip::make_address(input, ec);
+   if (!ec) {
+     return Endpoint(address, default_port);
+   }
+@@ -100,7 +100,7 @@
+     address_end = pos != std::string::npos ? pos : input.size();
+   }
+   auto address_str = input.substr(address_begin, address_end - address_begin);
+-  address = IpAddress::from_string(address_str, ec);
++  address = boost::asio::ip::make_address(address_str, ec);
+   if (ec) {
+     return STATUS_FORMAT(NetworkError, "Failed to parse $0: $1", input, ec);
+   }
+--- a/src/yb/util/net/inetaddress.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/util/net/inetaddress.cc	2026-08-16 19:05:51.942783830 +0200
+@@ -48,12 +48,7 @@
+ }
+ 
+ Status InetAddress::ToString(std::string *strval) const {
+-  boost::system::error_code ec;
+-  *strval = boost_addr_.to_string(ec);
+-  if (ec.value()) {
+-    return STATUS(IllegalState, "InetAddress object cannot be converted to string: $0",
+-                  ec.message());
+-  }
++  *strval = boost_addr_.to_string();
+   return Status::OK();
+ }
+ 
+--- a/src/yb/util/net/socket.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/util/net/socket.cc	2026-08-16 19:05:51.942783830 +0200
+@@ -374,7 +374,7 @@
+ 
+ Status Socket::BindForOutgoingConnection() {
+   boost::system::error_code ec;
+-  auto bind_address = IpAddress::from_string(FLAGS_local_ip_for_outbound_sockets, ec);
++  auto bind_address = boost::asio::ip::make_address(FLAGS_local_ip_for_outbound_sockets, ec);
+   CHECK(!ec)
+     << "Invalid local IP set for 'local_ip_for_outbound_sockets': '"
+     << FLAGS_local_ip_for_outbound_sockets << "': " << ec;
+--- a/src/yb/util/net/net_util.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/util/net/net_util.cc	2026-08-16 19:05:51.993974475 +0200
+@@ -666,13 +666,13 @@
+ 
+ bool IsWildcardAddress(const std::string& host_str) {
+   boost::system::error_code ec;
+-  auto addr = IpAddress::from_string(host_str, ec);
++  auto addr = boost::asio::ip::make_address(host_str, ec);
+   return !ec && addr.is_unspecified();
+ }
+ 
+ Result<IpAddress> ParseIpAddress(const std::string& host) {
+   boost::system::error_code ec;
+-  auto addr = IpAddress::from_string(host, ec);
++  auto addr = boost::asio::ip::make_address(host, ec);
+   if (ec) {
+     return STATUS_FORMAT(InvalidArgument, "Failed to parse $0: $1", host, ec.message());
+   }
+@@ -708,7 +708,8 @@
+       }
+     }
+     boost::system::error_code ec;
+-    auto address = IpAddress::from_string(host.substr(0, host.length() - kYbIpSuffix.length()), ec);
++    auto address = boost::asio::ip::make_address(
++        host.substr(0, host.length() - kYbIpSuffix.length()), ec);
+     if (!ec) {
+       return address;
+     }
+--- a/src/yb/util/net/dns_resolver.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/util/net/dns_resolver.cc	2026-08-16 19:05:51.942783830 +0200
+@@ -184,7 +184,7 @@
+         static const std::string kService = "";
+         std::string host_copy(host);
+         resolver->async_resolve(
+-            Resolver::query(host_copy, kService),
++            host_copy, kService,
+             [this, host_copy, promise, metric, start_time = CoarseMonoClock::Now()](
+                 const boost::system::error_code& error,
+                 const Resolver::results_type& entries) mutable {
+--- a/src/yb/util/net/tunnel.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/util/net/tunnel.cc	2026-08-16 19:06:07.135938367 +0200
+@@ -13,6 +13,7 @@
+ 
+ #include "yb/util/net/tunnel.h"
+ 
++#include <boost/asio/dispatch.hpp>
+ #include <boost/asio/ip/tcp.hpp>
+ #include <boost/asio/strand.hpp>
+ #include <boost/asio/write.hpp>
+@@ -54,7 +55,7 @@
+   }
+ 
+   void Shutdown() {
+-    strand_.dispatch([this, shared_self = shared_from_this()] {
++    boost::asio::dispatch(strand_, [this, shared_self = shared_from_this()] {
+       boost::system::error_code ec;
+       inbound_socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_type::shutdown_both, ec);
+       LOG_IF_WITH_PREFIX(INFO, ec) << "Shutdown failed: " << ec.message();
+@@ -154,7 +155,7 @@
+     if (ec) {
+       return STATUS_FORMAT(NetworkError, "Listen failed: $0", ec.message());
+     }
+-    strand_.dispatch([
++    boost::asio::dispatch(strand_, [
+         this, acceptor, local, remote, address_checker]() {
+       local_ = local;
+       remote_ = remote;
+@@ -167,7 +168,7 @@
+ 
+   void Shutdown() {
+     closing_.store(true, std::memory_order_release);
+-    strand_.dispatch([this] {
++    boost::asio::dispatch(strand_, [this] {
+       LOG(INFO) << "Shutdown tunnel: " << local_ << " => " << remote_;
+       if (acceptor_) {
+         boost::system::error_code ec;
+--- a/src/yb/util/net/net_util-test.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/util/net/net_util-test.cc	2026-08-16 19:06:32.174506182 +0200
+@@ -82,7 +82,7 @@
+ TEST(SockaddrTest, Test) {
+   boost::system::error_code ec;
+   const auto& kRegularAddr = "1.1.1.1";
+-  auto address = IpAddress::from_string(kRegularAddr, ec);
++  auto address = boost::asio::ip::make_address(kRegularAddr, ec);
+   ASSERT_FALSE(ec);
+   Endpoint endpoint(address, 12345);
+   ASSERT_EQ("1.1.1.1:12345", ToString(endpoint));
+--- a/src/yb/util/net/inetaddress-test.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/util/net/inetaddress-test.cc	2026-08-16 19:06:32.174506182 +0200
+@@ -115,7 +115,7 @@
+   vector<IpAddress> addresses;
+   for (const auto &address_str : address_strs) {
+     LOG(INFO) << address_str;
+-    addresses.push_back(IpAddress::from_string(address_str));
++    addresses.push_back(boost::asio::ip::make_address(address_str));
+   }
+   LOG(INFO) << "Starting test";
+   auto test_addresses = addresses;
+--- a/src/yb/util/net/dns_resolver-test.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/util/net/dns_resolver-test.cc	2026-08-16 19:06:41.630631214 +0200
+@@ -34,6 +34,7 @@
+ 
+ #include <vector>
+ 
++#include <boost/asio/executor_work_guard.hpp>
+ #include <gtest/gtest.h>
+ 
+ #include "yb/gutil/strings/util.h"
+@@ -54,9 +55,7 @@
+  protected:
+   void SetUp() override {
+     io_thread_ = CHECK_RESULT(Thread::Make("io_thread", "io_thread", [this] {
+-      boost::system::error_code ec;
+-      io_service_.run(ec);
+-      LOG_IF(DFATAL, ec) << "Failed to run io service: " << ec;
++      io_service_.run();
+     }));
+   }
+ 
+@@ -81,7 +80,8 @@
+ 
+   ThreadPtr io_thread_;
+   IoService io_service_;
+-  std::optional<IoService::work> work_{io_service_};
++  std::optional<boost::asio::executor_work_guard<IoService::executor_type>> work_{
++      boost::asio::make_work_guard(io_service_)};
+ 
+   DnsResolver resolver_{&io_service_, nullptr};
+ };
+--- a/src/yb/rpc/scheduler.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/rpc/scheduler.cc	2026-08-16 19:10:55.593977418 +0200
+@@ -17,6 +17,8 @@
+ 
+ #include <thread>
+ 
++#include <boost/asio/dispatch.hpp>
++#include <boost/asio/post.hpp>
+ #include <boost/asio/steady_timer.hpp>
+ #include <boost/asio/strand.hpp>
+ 
+@@ -56,11 +58,11 @@
+   }
+ 
+   void Abort(ScheduledTaskId task_id) {
+-    strand_.dispatch([this, task_id] {
++    boost::asio::dispatch(strand_, [this, task_id] {
+       auto& index = tasks_.get<IdTag>();
+       auto it = index.find(task_id);
+       if (it != index.end()) {
+-        io_service_.post([task = *it] { task->Run(STATUS(Aborted, "Task aborted")); });
++        boost::asio::post(io_service_, [task = *it] { task->Run(STATUS(Aborted, "Task aborted")); });
+         index.erase(it);
+       }
+     });
+@@ -69,17 +71,15 @@
+   void Shutdown() {
+     bool old_value = false;
+     if (closing_.compare_exchange_strong(old_value, true)) {
+-      strand_.dispatch([this] {
+-        boost::system::error_code ec;
+-        timer_.cancel(ec);
+-        LOG_IF(DFATAL, ec) << "Failed to cancel timer: " << ec.message();
++      boost::asio::dispatch(strand_, [this] {
++        timer_.cancel();
+ 
+         auto status = STATUS(
+             ServiceUnavailable, "Scheduler is shutting down", "" /* msg2 */, Errno(ESHUTDOWN));
+         // Abort all scheduled tasks. It is ok to run task earlier than it was scheduled because
+         // we pass error status to it.
+         for (auto task : tasks_) {
+-          io_service_.post([task, status] { task->Run(status); });
++          boost::asio::post(io_service_, [task, status] { task->Run(status); });
+         }
+         tasks_.clear();
+       });
+@@ -87,9 +87,9 @@
+   }
+ 
+   void DoSchedule(std::shared_ptr<ScheduledTaskBase> task) {
+-    strand_.dispatch([this, task] {
++    boost::asio::dispatch(strand_, [this, task] {
+       if (closing_.load(std::memory_order_acquire)) {
+-        io_service_.post([task] {
++        boost::asio::post(io_service_, [task] {
+           task->Run(STATUS(Aborted, "Scheduler shutdown", "" /* msg2 */, Errno(ESHUTDOWN)));
+         });
+         return;
+@@ -116,9 +116,7 @@
+     DCHECK(strand_.running_in_this_thread());
+     DCHECK(!tasks_.empty());
+ 
+-    boost::system::error_code ec;
+-    timer_.expires_at((*tasks_.begin())->time(), ec);
+-    LOG_IF(DFATAL, ec) << "Reschedule timer failed: " << ec.message();
++    timer_.expires_at((*tasks_.begin())->time());
+     ++timer_counter_;
+     timer_.async_wait(strand_.wrap(std::bind(&Impl::HandleTimer, this, _1)));
+   }
+@@ -138,7 +136,7 @@
+ 
+     auto now = std::chrono::steady_clock::now();
+     while (!tasks_.empty() && (*tasks_.begin())->time() <= now) {
+-      io_service_.post([task = *tasks_.begin()] { task->Run(Status::OK()); });
++      boost::asio::post(io_service_, [task = *tasks_.begin()] { task->Run(Status::OK()); });
+       tasks_.erase(tasks_.begin());
+     }
+ 
+--- a/src/yb/rpc/service_pool.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/rpc/service_pool.cc	2026-08-16 19:06:23.821280401 +0200
+@@ -41,6 +41,7 @@
+ #include <string>
+ #include <vector>
+ 
++#include <boost/asio/dispatch.hpp>
+ #include <boost/asio/strand.hpp>
+ 
+ #include "yb/gutil/atomicops.h"
+@@ -171,7 +172,7 @@
+         scheduler_.Abort(check_timeout_task);
+       }
+ 
+-      check_timeout_strand_.dispatch([this] {
++      boost::asio::dispatch(check_timeout_strand_, [this] {
+         pre_check_timeout_queue_.Drain();
+         shutdown_complete_latch_.CountDown();
+       });
+@@ -369,7 +370,7 @@
+     while (CoarseTimePoint(next_check_timeout) > time) {
+       if (next_check_timeout_.compare_exchange_weak(
+               next_check_timeout, time.time_since_epoch(), std::memory_order_acq_rel)) {
+-        check_timeout_strand_.dispatch([this, time] {
++        boost::asio::dispatch(check_timeout_strand_, [this, time] {
+           auto check_timeout_task = check_timeout_task_.load(std::memory_order_acquire);
+           if (check_timeout_task != kUninitializedScheduledTaskId) {
+             scheduler_.Abort(check_timeout_task);
+@@ -377,7 +378,7 @@
+           scheduled_tasks_.fetch_add(1, std::memory_order_acq_rel);
+           auto task_id = scheduler_.Schedule(
+               [this, time](ScheduledTaskId task_id, const Status& status) {
+-                check_timeout_strand_.dispatch([this, time, task_id, status] {
++                boost::asio::dispatch(check_timeout_strand_, [this, time, task_id, status] {
+                   CheckTimeout(task_id, time, status);
+                 });
+               },
+--- a/src/yb/rpc/io_thread_pool.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/rpc/io_thread_pool.cc	2026-08-16 19:06:23.763384259 +0200
+@@ -17,7 +17,8 @@
+ 
+ #include <thread>
+ 
+-#include <boost/asio/io_service.hpp>
++#include <boost/asio/executor_work_guard.hpp>
++#include <boost/asio/io_context.hpp>
+ 
+ #include "yb/util/cgroups.h"
+ #include "yb/util/logging.h"
+@@ -79,16 +80,15 @@
+                   "Failed to move iotp thread to cgroup");
+     }
+ #endif
+-    boost::system::error_code ec;
+-    io_service_.run(ec);
+-    LOG_IF(DFATAL, ec) << "Failed to run io service: " << ec;
++    io_service_.run();
+   }
+ 
+   std::string name_;
+   [[maybe_unused]] Cgroup* cgroup_;
+   std::vector<ThreadPtr> threads_;
+   IoService io_service_;
+-  std::optional<IoService::work> work_{io_service_};
++  std::optional<boost::asio::executor_work_guard<IoService::executor_type>> work_{
++      boost::asio::make_work_guard(io_service_)};
+ };
+ 
+ IoThreadPool::IoThreadPool(const std::string& name, size_t num_threads, Cgroup* cgroup)
+--- a/src/yb/rpc/rpc_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/rpc/rpc_pch.h	2026-08-16 19:06:23.688152939 +0200
+@@ -71,7 +71,7 @@
+ #include <vector>
+ 
+ #include <boost/algorithm/string/predicate.hpp>
+-#include <boost/asio/io_service.hpp>
++#include <boost/asio/io_context.hpp>
+ #include <boost/asio/ip/tcp.hpp>
+ #include <boost/asio/steady_timer.hpp>
+ #include <boost/asio/strand.hpp>
+--- a/src/yb/rpc/secure_stream.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/rpc/secure_stream.cc	2026-08-16 19:10:55.789979993 +0200
+@@ -94,6 +94,17 @@
+ 
+ #define SSL_STATUS(type, format) STATUS_FORMAT(type, format, SSLErrorMessage(ERR_get_error()))
+ 
++Slice Asn1StringToSlice(const ASN1_STRING* s) {
++  if (!s || ASN1_STRING_length(s) == 0) {
++    return Slice();
++  }
++  const auto* data = ASN1_STRING_get0_data(s);
++  if (!data) {
++    return Slice();
++  }
++  return Slice(data, ASN1_STRING_length(s));
++}
++
+ Result<BIOPtr> BIOFromSlice(const Slice& data) {
+   BIOPtr bio(BIO_new_mem_buf(data.data(), narrow_cast<int>(data.size())));
+   if (!bio) {
+@@ -196,7 +207,7 @@
+     return SSL_STATUS(IOError, "Failed to set subject: $0");
+   }
+ 
+-  X509_NAME* issuer = name.get();
++  const X509_NAME* issuer = name.get();
+   if (ca_cert) {
+     issuer = X509_get_subject_name(ca_cert);
+     if (!issuer) {
+@@ -324,7 +335,6 @@
+     ERR_free_strings();
+     EVP_cleanup();
+     CRYPTO_cleanup_all_ex_data();
+-    ERR_remove_thread_state(nullptr);
+     SSL_COMP_free_compression_methods();
+   }
+ };
+@@ -362,7 +372,7 @@
+ }
+ 
+ Slice GetEntryByNid(X509* cert, int nid) {
+-  X509_NAME* name = X509_get_subject_name(cert);
++  const X509_NAME* name = X509_get_subject_name(cert);
+   int last_i = -1;
+   for (int i = -1; (i = X509_NAME_get_index_by_NID(name, nid, i)) >= 0; ) {
+     last_i = i;
+@@ -376,12 +386,7 @@
+     return Slice();
+   }
+   auto* common_name = X509_NAME_ENTRY_get_data(name_entry);
+-
+-  if (common_name && common_name->data && common_name->length) {
+-    return Slice(common_name->data, common_name->length);
+-  }
+-
+-  return Slice();
++  return Asn1StringToSlice(common_name);
+ }
+ 
+ Slice GetCommonName(X509* cert) {
+@@ -1026,8 +1031,8 @@
+     GENERAL_NAME* gen = sk_GENERAL_NAME_value(gens, i);
+     if (gen->type == GEN_DNS) {
+       ASN1_IA5STRING* domain = gen->d.dNSName;
+-      if (domain->type == V_ASN1_IA5STRING && domain->data && domain->length) {
+-        Slice domain_slice(domain->data, domain->length);
++      if (domain && ASN1_STRING_type(domain) == V_ASN1_IA5STRING) {
++        Slice domain_slice = Asn1StringToSlice(domain);
+         VLOG_WITH_PREFIX(4) << "Domain: " << domain_slice.ToBuffer() << " vs " << remote_hostname_;
+         if (FLAGS_dump_certificate_entries) {
+           certificate_entries_.push_back(Format("DNS:$0", domain_slice.ToBuffer()));
+@@ -1038,10 +1043,12 @@
+       }
+     } else if (gen->type == GEN_IPADD) {
+       ASN1_OCTET_STRING* ip_address = gen->d.iPAddress;
+-      if (ip_address->type == V_ASN1_OCTET_STRING && ip_address->data) {
+-        if (ip_address->length == 4) {
++      if (ip_address && ASN1_STRING_type(ip_address) == V_ASN1_OCTET_STRING) {
++        const auto* ip_data = ASN1_STRING_get0_data(ip_address);
++        const int ip_len = ASN1_STRING_length(ip_address);
++        if (ip_data && ip_len == 4) {
+           boost::asio::ip::address_v4::bytes_type bytes;
+-          memcpy(&bytes, ip_address->data, bytes.size());
++          memcpy(&bytes, ip_data, bytes.size());
+           auto allowed_address = boost::asio::ip::address_v4(bytes);
+           VLOG_WITH_PREFIX(4) << "IPv4: " << allowed_address.to_string() << " vs " << address;
+           if (FLAGS_dump_certificate_entries) {
+@@ -1050,9 +1057,9 @@
+           if (address == allowed_address) {
+             return true;
+           }
+-        } else if (ip_address->length == 16) {
++        } else if (ip_data && ip_len == 16) {
+           boost::asio::ip::address_v6::bytes_type bytes;
+-          memcpy(&bytes, ip_address->data, bytes.size());
++          memcpy(&bytes, ip_data, bytes.size());
+           auto allowed_address = boost::asio::ip::address_v6(bytes);
+           VLOG_WITH_PREFIX(4) << "IPv6: " << allowed_address.to_string() << " vs " << address;
+           if (FLAGS_dump_certificate_entries) {
+@@ -1131,7 +1138,7 @@
+     if (gen->type == GEN_OTHERNAME) {
+       auto value = gen->d.otherName->value;
+       if (IsStringType(value->type)) {
+-        Slice other_name(value->value.asn1_string->data, value->value.asn1_string->length);
++        Slice other_name = Asn1StringToSlice(value->value.asn1_string);
+         if (!other_name.empty()) {
+           if (FLAGS_dump_certificate_entries) {
+             certificate_entries_.push_back(Format("ON:$0", other_name.ToBuffer()));
+--- a/src/yb/master/master_snapshot_coordinator.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/master/master_snapshot_coordinator.cc	2026-08-16 19:06:23.834395875 +0200
+@@ -19,6 +19,7 @@
+ #include <boost/multi_index/composite_key.hpp>
+ #include <boost/multi_index/mem_fun.hpp>
+ #include <boost/asio/io_context.hpp>
++#include <boost/asio/post.hpp>
+ 
+ #include "yb/common/common_types_util.h"
+ #include "yb/common/constants.h"
+@@ -1453,7 +1454,8 @@
+ 
+   template <class Operations>
+   void PostScheduleOperations(Operations&& operations, int64_t leader_term) {
+-    context_.Scheduler().io_service().post(
++    boost::asio::post(
++        context_.Scheduler().io_service(),
+         [this, operations = std::move(operations), leader_term] {
+       ScheduleOperations(operations, leader_term);
+     });
+@@ -1909,7 +1911,7 @@
+       if (FLAGS_schedule_snapshot_rpcs_out_of_band && batch_done && !is_empty) {
+         // Send another batch. This prevents having to wait for the regular cycle
+         // of master snapshot coordinator which can be too slow.
+-        context_.Scheduler().io_service().post([this]() {
++        boost::asio::post(context_.Scheduler().io_service(), [this]() {
+           LOG(INFO) << "Rescheduling Snapshot RPCs out of band.";
+           Poll();
+         });
+@@ -1946,7 +1948,7 @@
+         if (FLAGS_schedule_restoration_rpcs_out_of_band && batch_done) {
+           // Send another batch. This prevents having to wait for the regular cycle
+           // of master snapshot coordinator which can be too slow.
+-          context_.Scheduler().io_service().post([this]() {
++          boost::asio::post(context_.Scheduler().io_service(), [this]() {
+             LOG(INFO) << "Rescheduling restoration RPCs out of band.";
+             Poll();
+           });
+--- a/src/yb/master/master_heartbeat_service.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/master/master_heartbeat_service.cc	2026-08-16 19:40:46.195402985 +0200
+@@ -14,6 +14,7 @@
+ #include <algorithm>
+ #include <iterator>
+ 
++#include <boost/date_time/posix_time/posix_time.hpp>
+ #include <google/protobuf/repeated_field.h>
+ 
+ #include "yb/common/common_flags.h"
+--- a/src/yb/master/xcluster/xcluster_safe_time_service.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/master/xcluster/xcluster_safe_time_service.cc	2026-08-16 19:42:33.203591180 +0200
+@@ -14,6 +14,7 @@
+ 
+ #include <chrono>
+ 
++#include <boost/asio/dispatch.hpp>
+ 
+ #include "yb/client/client.h"
+ #include "yb/client/schema.h"
+@@ -98,7 +99,7 @@
+ }
+ 
+ void XClusterSafeTimeService::ScheduleTaskIfNeeded() {
+-  poll_strand_->dispatch([this] {
++  boost::asio::dispatch(*poll_strand_, [this] {
+     poller_.Resume();
+   });
+ }
+--- a/src/yb/tserver/tablet_server_main_impl.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/tserver/tablet_server_main_impl.cc	2026-08-16 19:06:23.688152939 +0200
+@@ -265,11 +265,10 @@
+ void RunIOService(
+     std::function<void()> trigger_termination_fn, boost::asio::io_service* io_service) {
+   // Runs forever unless there is some error or explicitly stopped.
+-  boost::system::error_code ec;
+-  io_service->run(ec);
++  io_service->run();
+ 
+   if (!io_service->stopped()) {
+-    LOG(WARNING) << "Stopping process as IO service run failed: " << ec;
++    LOG(WARNING) << "Stopping process as IO service run failed";
+     trigger_termination_fn();
+   }
+ }
+--- a/src/yb/yql/cql/cqlserver/cql_server.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/yql/cql/cqlserver/cql_server.cc	2026-08-16 19:10:55.561986156 +0200
+@@ -120,24 +120,14 @@
+ }
+ 
+ void CQLServer::Shutdown() {
+-  boost::system::error_code ec;
+-  timer_.cancel(ec);
+-  if (ec) {
+-    LOG(WARNING) << "Failed to cancel timer: " << ec;
+-  }
++  timer_.cancel();
+   server::RpcAndWebServerBase::Shutdown();
+ }
+ 
+ void CQLServer::RescheduleTimer() {
+   // Reschedule the timer.
+-  boost::system::error_code ec;
+   auto new_expires = timer_.expires_at() + refresh_interval();
+-  timer_.expires_at(new_expires, ec);
+-  if (ec) {
+-    // Happens during shutdown.
+-    LOG(WARNING) << "Failed to reschedule timer: " << ec;
+-    return;
+-  }
++  timer_.expires_at(new_expires);
+   timer_.async_wait(boost::bind(&CQLServer::CQLNodeListRefresh, this,
+                                 boost::asio::placeholders::error));
+ }
+--- a/src/yb/yql/cql/cqlserver/cql_server.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/yql/cql/cqlserver/cql_server.h	2026-08-16 19:38:39.355606509 +0200
+@@ -26,6 +26,7 @@
+ #include <type_traits>
+ 
+ #include <boost/asio.hpp>
++#include <boost/asio/deadline_timer.hpp>
+ #include <boost/container/small_vector.hpp>
+ #include <boost/date_time/posix_time/posix_time.hpp>
+ #include <boost/version.hpp>
+--- a/src/yb/yql/cql/ql/parser/scanner.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/yql/cql/ql/parser/scanner.cc	2026-08-16 19:28:25.752410000 +0200
+@@ -62,7 +62,10 @@
+ 
+   token_loc_.initialize();
+   cursor_.initialize();
+-  lookahead_.type = 0;
++  {
++    GramProcessor::symbol_type empty;
++    lookahead_.move(empty);
++  }
+ 
+   literallen_ = 0;
+   xcdepth_ = 0;
+@@ -88,22 +91,21 @@
+   GramProcessor::symbol_type cur_token;
+   ScanState scan_state;
+ 
+-  if (lookahead_.token() != 0) {
+-    // Remove lookahead from the context and reset it to type 0.
++  if (!lookahead_.empty()) {
++    // Remove lookahead from the context and reset it.
+     cur_token.move(lookahead_);
+-    lookahead_.type = 0;
+   } else {
+     // Read the next token and save it to 'cur_token'.
+     ScanNextToken(scan_state, &cur_token);
+   }
+ 
+   // Return the token if it doesn't require lookahead. Otherwise, set the token length.
+-  switch (cur_token.token()) {
+-    case GramProcessor::token::TOK_GROUP_P:
+-    case GramProcessor::token::TOK_OFFSET:
+-    case GramProcessor::token::TOK_NOT:
+-    case GramProcessor::token::TOK_NULLS_P:
+-    case GramProcessor::token::TOK_WITH: {
++  switch (cur_token.kind()) {
++    case GramProcessor::symbol_kind::S_GROUP_P:
++    case GramProcessor::symbol_kind::S_OFFSET:
++    case GramProcessor::symbol_kind::S_NOT:
++    case GramProcessor::symbol_kind::S_NULLS_P:
++    case GramProcessor::symbol_kind::S_WITH: {
+       break;
+     }
+ 
+@@ -117,43 +119,43 @@
+   ScanNextToken(scan_state, &lookahead_);
+ 
+   // Replace cur_token if needed, based on lookahead.
+-  GramProcessor::token_type next_token_type = lookahead_.token();
+-  switch (cur_token.token()) {
+-    case GramProcessor::token::TOK_GROUP_P: {
++  auto next_token_type = lookahead_.kind();
++  switch (cur_token.kind()) {
++    case GramProcessor::symbol_kind::S_GROUP_P: {
+       // Replace GROUP_P with GROUP_LA to support SELECT ... GROUP BY ...
+       // - Token GROUP_P is accepted when being used as column name (practically all names).
+       // - Token GROUP_LA is accepted when being used in GROUP BY clause.
+       //   group_clause: GROUP_LA BY <group_by_list>
+-      int next_tok = static_cast<int>(next_token_type);
+-      if (next_tok == GramProcessor::token::TOK_BY) {
++      if (next_token_type == GramProcessor::symbol_kind::S_BY) {
+         return GramProcessor::make_GROUP_LA(cursor_);
+       }
+       break;
+     }
+ 
+-    case GramProcessor::token::TOK_OFFSET: {
++    case GramProcessor::symbol_kind::S_OFFSET: {
+       // Replace OFFSET with OFFSET_LA to support SELECT ... OFFSET ...
+       // - Token OFFSET is accepted when being used as column name (practically all names).
+       // - Token OFFSET_LA is accepted when being used in OFFSET clause.
+       //   offset_clause:  OFFSET_LA <int constant>
+       //                   OFFSET_LA '?'  --> Bind variable
+       //                   OFFSET_LA ':'  --> Bind variable
+-      int next_tok = static_cast<int>(next_token_type);
+-      if (next_tok == GramProcessor::token::TOK_ICONST || next_tok == '?' || next_tok == ':') {
++      if (next_token_type == GramProcessor::symbol_kind::S_ICONST ||
++          next_token_type == GramProcessor::symbol_kind::S_501_ ||
++          next_token_type == GramProcessor::symbol_kind::S_502_) {
+         return GramProcessor::make_OFFSET_LA(cursor_);
+       }
+       break;
+     }
+ 
+-    case GramProcessor::token::TOK_NOT: {
++    case GramProcessor::symbol_kind::S_NOT: {
+       // Replace NOT by NOT_LA if it's followed by BETWEEN, IN, etc.
+       switch (next_token_type) {
+-        case GramProcessor::token::TOK_BETWEEN:
+-        case GramProcessor::token::TOK_EXISTS:
+-        case GramProcessor::token::TOK_IN_P:
+-        case GramProcessor::token::TOK_LIKE:
+-        case GramProcessor::token::TOK_ILIKE:
+-        case GramProcessor::token::TOK_SIMILAR: {
++        case GramProcessor::symbol_kind::S_BETWEEN:
++        case GramProcessor::symbol_kind::S_EXISTS:
++        case GramProcessor::symbol_kind::S_IN_P:
++        case GramProcessor::symbol_kind::S_LIKE:
++        case GramProcessor::symbol_kind::S_ILIKE:
++        case GramProcessor::symbol_kind::S_SIMILAR: {
+           return GramProcessor::make_NOT_LA(cursor_);
+         }
+ 
+@@ -164,11 +166,11 @@
+       break;
+     }
+ 
+-    case GramProcessor::token::TOK_NULLS_P: {
++    case GramProcessor::symbol_kind::S_NULLS_P: {
+       // Replace NULLS_P by NULLS_LA if it's followed by FIRST or LAST.
+       switch (next_token_type) {
+-        case GramProcessor::token::TOK_FIRST_P:
+-        case GramProcessor::token::TOK_LAST_P: {
++        case GramProcessor::symbol_kind::S_FIRST_P:
++        case GramProcessor::symbol_kind::S_LAST_P: {
+           return GramProcessor::make_NULLS_LA(cursor_);
+         }
+ 
+@@ -179,11 +181,11 @@
+       break;
+     }
+ 
+-    case GramProcessor::token::TOK_WITH: {
++    case GramProcessor::symbol_kind::S_WITH: {
+       // Replace WITH by WITH_LA if it's followed by TIME or ORDINALITY.
+       switch (next_token_type) {
+-        case GramProcessor::token::TOK_TIME:
+-        case GramProcessor::token::TOK_ORDINALITY: {
++        case GramProcessor::symbol_kind::S_TIME:
++        case GramProcessor::symbol_kind::S_ORDINALITY: {
+           return GramProcessor::make_WITH_LA(cursor_);
+         }
+ 
+--- a/src/yb/yql/redis/redisserver/redisserver-test.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/yql/redis/redisserver/redisserver-test.cc	2026-08-16 19:06:32.174506182 +0200
+@@ -2556,7 +2556,7 @@
+  private:
+   Endpoint RedisProxyEndpoint() override {
+     auto ts0 = external_mini_cluster()->tablet_server(0);
+-    return Endpoint(IpAddress::from_string(ts0->bind_host()), ts0->redis_rpc_port());
++    return Endpoint(boost::asio::ip::make_address(ts0->bind_host()), ts0->redis_rpc_port());
+   }
+ 
+   bool use_external_mini_cluster() override { return true; }
+--- a/src/yb/rpc/rpc_stub-test.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/rpc/rpc_stub-test.cc	2026-08-16 19:06:32.234506975 +0200
+@@ -284,10 +284,10 @@
+ TEST_F(RpcStubTest, TestIncoherence) {
+   static const std::string kServer1Name = "Server1";
+   TestServerOptions server1options;
+-  server1options.endpoint = Endpoint(IpAddress::from_string("127.0.0.11"), 0);
++  server1options.endpoint = Endpoint(boost::asio::ip::make_address("127.0.0.11"), 0);
+   static const std::string kServer2Name = "Server2";
+   TestServerOptions server2options;
+-  server2options.endpoint = Endpoint(IpAddress::from_string("127.0.0.12"), 0);
++  server2options.endpoint = Endpoint(boost::asio::ip::make_address("127.0.0.12"), 0);
+ 
+   auto server1 = StartTestServer(server1options, kServer1Name);
+   auto proxy1holder = CreateCalculatorProxyHolder(server1.bound_endpoint());
+--- a/src/yb/common/common_fwd.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/common/common_fwd.h	2026-08-16 19:08:51.508345064 +0200
+@@ -13,6 +13,7 @@
+ 
+ #pragma once
+ 
++#include <cstdint>
+ #include <memory>
+ #include <vector>
+ 
+--- a/src/yb/client/tablet_server.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/client/tablet_server.h	2026-08-16 19:14:32.572823001 +0200
+@@ -11,6 +11,7 @@
+ // under the License.
+ //
+ 
++#include <cstdint>
+ #include <string>
+ #pragma once
+ 
+--- a/src/postgres/src/timezone/zic.c	2026-08-06 03:52:33.000000000 +0200
++++ b/src/postgres/src/timezone/zic.c	2026-08-16 19:21:10.930028929 +0200
+@@ -2633,7 +2633,7 @@
+ 	   bool isdst, zic_t save, bool doquotes)
+ {
+ 	char	   *cp;
+-	char	   *slashp;
++	char const *slashp;
+ 	size_t		len;
+ 	char const *format = zp->z_format;
+ 
+--- a/src/postgres/third-party-extensions/documentdb/Makefile.cflags	2026-08-06 03:52:33.000000000 +0200
++++ b/src/postgres/third-party-extensions/documentdb/Makefile.cflags	2026-08-16 19:26:59.526101682 +0200
+@@ -17,7 +17,7 @@
+ # YB: Replace libbson-static-1.0 and intelmathlib with yb thirdparty based bson and bid libs.
+ PG_LDFLAGS = -lbson-1.0 $(YB_THIRDPARTY_DIR)/installed/uninstrumented/lib/libbid.a \
+                 $(YB_THIRDPARTY_DIR)/installed/uninstrumented/lib/libpcre2-8.a -L$(YB_BUILD_ROOT)/lib \
+-                -L/usr/lib -lyb_pggate -lyb_pggate_util
++                -L/usr/lib64 -m64 -lyb_pggate -lyb_pggate_util
+ PG_LDFLAGS += -Wl,-rpath=$(shell $(PG_CONFIG) --pkglibdir)
+ 
+ ifeq ($(USE_DOCUMENTDB_CORE),1)
+--- a/src/yb/server/pprof-path-handlers.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/server/pprof-path-handlers.cc	2026-08-17 06:40:00.000000000 +0200
+@@ -49,6 +49,7 @@
+ #include <gperftools/profiler.h>
+ #endif  // YB_GPERFTOOLS_TCMALLOC
+ 
++#include <cmath>
+ #include <fstream>
+ #include <iomanip>
+ #include <string>

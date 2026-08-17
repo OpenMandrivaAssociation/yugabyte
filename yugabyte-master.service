@@ -1,0 +1,24 @@
+[Unit]
+Description=YugabyteDB master
+Documentation=https://docs.yugabyte.com/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=yugabyte
+Group=yugabyte
+EnvironmentFile=-/etc/yugabyte/master.conf
+ExecStart=/usr/lib/yugabyte/bin/yb-master $YB_MASTER_ARGS
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=1048576
+LimitNPROC=infinity
+TimeoutStopSec=60
+WorkingDirectory=/var/lib/yugabyte
+
+# The daemons open a lot of files and use a lot of threads.
+TasksMax=infinity
+
+[Install]
+WantedBy=multi-user.target

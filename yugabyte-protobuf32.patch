@@ -1,0 +1,756 @@
+--- a/src/yb/util/jsonwriter.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/util/jsonwriter.h	2026-08-17 05:12:49.695997638 +0200
+@@ -34,6 +34,7 @@
+ #include <inttypes.h>
+ 
+ #include <memory>
++#include <string_view>
+ 
+ #include "yb/gutil/macros.h"
+ #include "yb/gutil/strings/stringpiece.h"
+@@ -86,6 +87,7 @@
+   void String(const char* str, size_t length);
+   void String(const char* str);
+   void String(const std::string& str);
++  void String(std::string_view str);
+ 
+   void Protobuf(const google::protobuf::Message& message);
+ 
+--- a/src/yb/util/jsonwriter.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/util/jsonwriter.cc	2026-08-17 05:12:49.683102859 +0200
+@@ -198,6 +198,7 @@
+ void JsonWriter::String(const char* str, size_t length) { impl_->String(str, length); }
+ void JsonWriter::String(const char* str) { impl_->String(str); }
+ void JsonWriter::String(const string& str) { impl_->String(str); }
++void JsonWriter::String(std::string_view str) { impl_->String(str.data(), str.size()); }
+ void JsonWriter::StartObject() { impl_->StartObject(); }
+ void JsonWriter::EndObject() { impl_->EndObject(); }
+ void JsonWriter::StartArray() { impl_->StartArray(); }
+--- a/src/yb/util/protoc-gen-insertions.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/util/protoc-gen-insertions.cc	2026-08-17 04:59:11.613787066 +0200
+@@ -59,8 +59,9 @@
+ 
+     // Determine the file name we will substitute into.
+     string path_no_extension;
+-    if (!TryStripSuffixString(file->name(), kProtoExtension, &path_no_extension)) {
+-      *error = strings::Substitute("file name $0 did not end in $1", file->name(), kProtoExtension);
++    const std::string file_name(file->name());
++    if (!TryStripSuffixString(file_name, kProtoExtension, &path_no_extension)) {
++      *error = strings::Substitute("file name $0 did not end in $1", file_name, kProtoExtension);
+       return false;
+     }
+     string pb_file = path_no_extension + ".pb.cc";
+@@ -77,6 +78,10 @@
+ 
+     return true;
+   }
++
++  uint64_t GetSupportedFeatures() const override {
++    return FEATURE_PROTO3_OPTIONAL;
++  }
+ };
+ 
+ } // namespace yb
+--- a/src/yb/util/debug/trace_event.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/util/debug/trace_event.h	2026-08-17 05:15:23.249920392 +0200
+@@ -204,6 +204,7 @@
+ #pragma once
+ 
+ #include <string>
++#include <string_view>
+ 
+ #include "yb/gutil/atomicops.h"
+ #include "yb/gutil/walltime.h"
+@@ -1174,6 +1175,17 @@
+   *type = TRACE_VALUE_TYPE_COPY_STRING;
+   *value = type_value.as_uint;
+ }
++
++// protobuf 32 returns absl::string_view from GetTypeName()/name(). Those
++// views are backed by NUL-terminated descriptor storage.
++static inline void SetTraceValue(std::string_view arg,
++                                 unsigned char* type,
++                                 uint64_t* value) {
++  TraceValueUnion type_value;
++  type_value.as_string = arg.data() ? arg.data() : "";
++  *type = TRACE_VALUE_TYPE_COPY_STRING;
++  *value = type_value.as_uint;
++}
+ 
+ // These AddTraceEvent and AddTraceEventWithThreadIdAndTimestamp template
+ // functions are defined here instead of in the macro, because the arg_values
+--- a/src/yb/gen_yrpc/protoc-gen-yrpc.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/gen_yrpc/protoc-gen-yrpc.cc	2026-08-17 04:56:02.947286307 +0200
+@@ -109,6 +109,10 @@
+     return true;
+   }
+ 
++  uint64_t GetSupportedFeatures() const override {
++    return FEATURE_PROTO3_OPTIONAL;
++  }
++
+  private:
+   template <class Generator, class... Args>
+   void Generate(
+--- a/src/yb/gen_yrpc/substitutions.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/gen_yrpc/substitutions.cc	2026-08-17 05:16:30.098757738 +0200
+@@ -72,11 +72,11 @@
+ } // namespace
+ 
+ FileSubstitutions::FileSubstitutions(const google::protobuf::FileDescriptor* file)
+-    : file_(file), path_no_extension_(RemoveProtoExtension(file->name())) {
++    : file_(file), path_no_extension_(RemoveProtoExtension(std::string(file->name()))) {
+ }
+ 
+ Substitutions FileSubstitutions::Create() {
+-  std::string path = file_->name();
++  std::string path(file_->name());
+   Substitutions result;
+ 
+   result.emplace_back("path", path);
+@@ -90,8 +90,8 @@
+   std::replace(upper_case.begin(), upper_case.end(), '/', '_');
+   result.emplace_back("upper_case", upper_case);
+ 
+-  result.emplace_back("open_namespace", GenerateOpenNamespace(file_->package()));
+-  result.emplace_back("close_namespace", GenerateCloseNamespace(file_->package()));
++  result.emplace_back("open_namespace", GenerateOpenNamespace(std::string(file_->package())));
++  result.emplace_back("close_namespace", GenerateCloseNamespace(std::string(file_->package())));
+ 
+   result.emplace_back("wire_format", kWireFormat);
+ 
+@@ -146,14 +146,14 @@
+     const google::protobuf::MethodDescriptor* method, rpc::RpcSides side) {
+   Substitutions result;
+ 
+-  result.emplace_back("rpc_name", method->name());
+-  result.emplace_back("rpc_full_name", method->full_name());
++  result.emplace_back("rpc_name", std::string(method->name()));
++  result.emplace_back("rpc_full_name", std::string(method->full_name()));
+   result.emplace_back("rpc_full_name_plainchars",
+-                      StringReplace(method->full_name(), ".", "_", true));
++                      StringReplace(std::string(method->full_name()), ".", "_", true));
+ 
+-  const auto& service_full_name = method->service()->full_name();
+-  auto request_type = method->input_type()->full_name();
+-  auto response_type = method->output_type()->full_name();
++  const std::string service_full_name(method->service()->full_name());
++  std::string request_type(method->input_type()->full_name());
++  std::string response_type(method->output_type()->full_name());
+ 
+   result.emplace_back("pb_request", RelativeClassPath(request_type, service_full_name));
+   result.emplace_back("pb_response", RelativeClassPath(response_type, service_full_name));
+@@ -170,7 +170,7 @@
+   result.emplace_back("request", RelativeClassPath(request_type, service_full_name));
+   result.emplace_back("response", RelativeClassPath(response_type, service_full_name));
+ 
+-  result.emplace_back("metric_enum_key", Format("k$0", method->name()));
++  result.emplace_back("metric_enum_key", Format("k$0", std::string(method->name())));
+ 
+   result.emplace_back("send_metadata", ShouldSendMetadata(method) ? "true" : "false");
+ 
+@@ -197,9 +197,10 @@
+     case google::protobuf::FieldDescriptor::CPPTYPE_FLOAT:
+       return std::to_string(field->default_value_float());
+     case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
+-      return "::" + ReplaceNamespaceDelimiters(field->default_value_enum()->full_name());
++      return "::" + ReplaceNamespaceDelimiters(
++          std::string(field->default_value_enum()->full_name()));
+     case google::protobuf::FieldDescriptor::CPPTYPE_STRING:
+-      return field->default_value_string();
++      return std::string(field->default_value_string());
+     case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE:
+       return "NOT SUPPORTED";
+   }
+@@ -208,7 +209,7 @@
+ 
+ Substitutions CreateSubstitutions(const google::protobuf::FieldDescriptor* field) {
+   Substitutions result;
+-  auto field_name = boost::to_lower_copy(field->name());
++  auto field_name = boost::to_lower_copy(std::string(field->name()));
+   if (keywords.count(field_name)) {
+     field_name += "_";
+   }
+@@ -218,16 +219,19 @@
+       result.emplace_back("field_accessor", "direct_" + field_name + "()");
+     } else {
+       result.emplace_back("field_accessor",
+-                          Format("$0_.$1_", field->containing_oneof()->name(), field_name));
++                          Format("$0_.$1_", std::string(field->containing_oneof()->name()),
++                                 field_name));
+     }
+-    result.emplace_back("field_containing_oneof_name", field->containing_oneof()->name());
++    result.emplace_back("field_containing_oneof_name",
++                        std::string(field->containing_oneof()->name()));
+     result.emplace_back(
+-        "field_containing_oneof_cap_name", SnakeToCamelCase(field->containing_oneof()->name()));
++        "field_containing_oneof_cap_name",
++        SnakeToCamelCase(std::string(field->containing_oneof()->name())));
+   } else {
+     result.emplace_back("field_accessor", field_name + "_");
+   }
+   result.emplace_back("field_value", field->is_repeated() ? "entry" : field_name + "()");
+-  auto camelcase_name = field->camelcase_name();
++  std::string camelcase_name(field->camelcase_name());
+   camelcase_name[0] = std::toupper(camelcase_name[0]);
+   result.emplace_back("field_camelcase_name", camelcase_name);
+   std::string field_type = MapFieldType(field, Lightweight::kTrue);
+@@ -254,7 +258,8 @@
+   } else if (field->cpp_type() == google::protobuf::FieldDescriptor::CPPTYPE_ENUM) {
+     result.emplace_back(
+         "field_default_value",
+-        "::" + ReplaceNamespaceDelimiters(field->enum_type()->value(0)->full_name()));
++        "::" + ReplaceNamespaceDelimiters(
++            std::string(field->enum_type()->value(0)->full_name())));
+   } else {
+     result.emplace_back("field_default_value", field_type + "()");
+   }
+@@ -263,8 +268,8 @@
+ 
+ Substitutions CreateSubstitutions(const google::protobuf::ServiceDescriptor* service) {
+   Substitutions result;
+-  result.emplace_back("service_name", service->name());
+-  std::string full_service_name = service->full_name();
++  result.emplace_back("service_name", std::string(service->name()));
++  std::string full_service_name(service->full_name());
+   result.emplace_back("original_full_service_name", full_service_name);
+   auto custom_service_name = service->options().GetExtension(rpc::custom_service_name);
+   if (!custom_service_name.empty()) {
+@@ -272,7 +277,7 @@
+   }
+   result.emplace_back("full_service_name", full_service_name);
+   result.emplace_back("service_method_count", std::to_string(service->method_count()));
+-  result.emplace_back("service_method_enum", service->name() + "RpcMethodIndexes");
++  result.emplace_back("service_method_enum", std::string(service->name()) + "RpcMethodIndexes");
+ 
+   // TODO: upgrade to protobuf 2.5.x and attach service comments
+   // to the generated service classes using the SourceLocation API.
+--- a/src/yb/gen_yrpc/model.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/gen_yrpc/model.cc	2026-08-17 05:13:43.568672099 +0200
+@@ -137,7 +137,8 @@
+ template <class Desc>
+ std::string DoUnnestedName(
+     const Desc* desc, Lightweight lightweight, FullPath full_path, bool map_entry) {
+-  auto name = lightweight ? MakeLightweightName(desc->name()) : desc->name();
++  std::string name = lightweight ? MakeLightweightName(std::string(desc->name()))
++                                 : std::string(desc->name());
+   if (map_entry) {
+     name += "_DoNotUse";
+   }
+@@ -145,7 +146,7 @@
+     return UnnestedName(desc->containing_type(), lightweight, full_path) + "_" + name;
+   }
+   if (full_path) {
+-    const auto& full_name = desc->full_name();
++    const std::string full_name(desc->full_name());
+     auto idx = full_name.find_last_of('.');
+     if (idx != std::string::npos) {
+       return full_name.substr(0, idx + 1) + name;
+@@ -186,9 +187,9 @@
+           field->enum_type()->containing_type()
+               ? UnnestedName(
+                     field->enum_type()->containing_type(), Lightweight::kFalse, FullPath::kTrue)
+-                + "." + field->enum_type()->name()
+-              : field->enum_type()->full_name(),
+-          field->containing_type()->full_name());
++                + "." + std::string(field->enum_type()->name())
++              : std::string(field->enum_type()->full_name()),
++          std::string(field->containing_type()->full_name()));
+     case WireFormatLite::CppType::CPPTYPE_STRING:
+       return lightweight ? "::yb::Slice" : "std::string";
+     case WireFormatLite::CppType::CPPTYPE_MESSAGE:
+@@ -196,7 +197,7 @@
+         return "::yb::rpc::LWAny";
+       }
+       return RelativeClassPath(UnnestedName(field->message_type(), lightweight, FullPath::kTrue),
+-                               field->containing_type()->full_name());
++                               std::string(field->containing_type()->full_name()));
+     default:
+       break;
+   }
+@@ -255,7 +256,7 @@
+ std::vector<std::string> ListDependencies(const google::protobuf::FileDescriptor* file) {
+   std::vector<std::string> result;
+   for (int i = 0; i != file->dependency_count(); ++i) {
+-    std::string dependency_path = RemoveProtoExtension(file->dependency(i)->name());
++    std::string dependency_path = RemoveProtoExtension(std::string(file->dependency(i)->name()));
+     if (dependency_path == "google/protobuf/any") {
+       result.push_back("yb/rpc/any");
+       continue;
+--- a/src/yb/gen_yrpc/messages_generator.cc	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/gen_yrpc/messages_generator.cc	2026-08-17 05:17:52.175701484 +0200
+@@ -14,6 +14,8 @@
+ #include "yb/gen_yrpc/messages_generator.h"
+ 
+ #include <boost/algorithm/string/predicate.hpp>
++#include <google/protobuf/descriptor.pb.h>
++#include <google/protobuf/descriptor_legacy.h>
+ #include <google/protobuf/io/printer.h>
+ 
+ #include "yb/gen_yrpc/model.h"
+@@ -137,15 +139,16 @@
+     bool has_nested_using = false;
+     for (auto i = 0; i != message_->enum_type_count(); ++i) {
+       const auto* nested = message_->enum_type(i);
+-      printer("using " + nested->name() + " = $message_name$::" + nested->name() + ";\n");
++      printer("using " + std::string(nested->name()) + " = $message_name$::" +
++              std::string(nested->name()) + ";\n");
+       has_nested_using = true;
+     }
+ 
+     for (auto i = 0; i != message_->nested_type_count(); ++i) {
+       const auto* nested = message_->nested_type(i);
+-      printer("using " + MakeLightweightName(nested->name()) + " = " +
++      printer("using " + MakeLightweightName(std::string(nested->name())) + " = " +
+               RelativeClassPath(UnnestedName(nested, Lightweight::kTrue, FullPath::kTrue),
+-                                message_->full_name()) + ";\n");
++                                std::string(message_->full_name())) + ";\n");
+       has_nested_using = true;
+     }
+ 
+@@ -471,7 +474,7 @@
+     }
+ 
+     printer.Outdent();
+-    printer("} " + current_oneof->name() + "_;\n");
++    printer("} " + std::string(current_oneof->name()) + "_;\n");
+     printer("$message_name$::$field_containing_oneof_cap_name$Case "
+             "$field_containing_oneof_name$_case_ = "
+             "$message_name$::$field_containing_oneof_cap_name$Case();\n");
+@@ -705,7 +708,8 @@
+         }
+       } else {
+         bool check_has =
+-            (field->file()->syntax() == google::protobuf::FileDescriptor::Syntax::SYNTAX_PROTO2 ||
++            (google::protobuf::FileDescriptorLegacy(field->file()).edition() ==
++                 google::protobuf::EDITION_PROTO2 ||
+              lightweight || IsMessage(field)) &&
+             !message_->options().map_entry();
+         if (StoreAsPointer(field)) {
+@@ -1287,7 +1291,7 @@
+       }
+       if (!field->is_repeated() && ref_type && ref_type->file() == message->file()) {
+         if (!MessageDeclaration(printer, ref_type)) {
+-          printer("// CYCLE " + message->name() + "\n");
++          printer("// CYCLE " + std::string(message->name()) + "\n");
+           insert_result.first->second->CycleDependency(field);
+         }
+       }
+@@ -1348,7 +1352,8 @@
+         printer(Format("case $$$0$$::$1:\n", from_type, value->name()));
+         printer(Format("  return $$$0$$::$1;\n", to_type, value->name()));
+       }
+-      if (enum_desc->file()->syntax() == google::protobuf::FileDescriptor::SYNTAX_PROTO3 &&
++      if (google::protobuf::FileDescriptorLegacy(enum_desc->file()).edition() ==
++              google::protobuf::EDITION_PROTO3 &&
+           name == "ToLW") {
+         printer(Format("case $$$0$$::$$$0$$_INT_MIN_SENTINEL_DO_NOT_USE_:\n", from_type));
+         printer(Format("case $$$0$$::$$$0$$_INT_MAX_SENTINEL_DO_NOT_USE_:\n", from_type));
+--- a/src/yb/ash/ash_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/ash/ash_pch.h	2026-08-17 04:56:02.942120024 +0200
+@@ -65,7 +65,6 @@
+ #include <google/protobuf/arena.h>
+ #include <google/protobuf/arenastring.h>
+ #include <google/protobuf/descriptor.pb.h>
+-#include <google/protobuf/generated_message_table_driven.h>
+ #include <google/protobuf/generated_message_util.h>
+ #include <google/protobuf/io/coded_stream.h>
+ #include <google/protobuf/map_entry.h>
+--- a/src/yb/bfcommon/bfcommon_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/bfcommon/bfcommon_pch.h	2026-08-17 04:56:02.942275236 +0200
+@@ -32,7 +32,6 @@
+ #include <google/protobuf/arena.h>
+ #include <google/protobuf/arenastring.h>
+ #include <google/protobuf/descriptor.pb.h>
+-#include <google/protobuf/generated_message_table_driven.h>
+ #include <google/protobuf/generated_message_util.h>
+ #include <google/protobuf/io/coded_stream.h>
+ #include <google/protobuf/message.h>
+--- a/src/yb/bfpg/bfpg_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/bfpg/bfpg_pch.h	2026-08-17 04:56:02.942530559 +0200
+@@ -88,7 +88,6 @@
+ #include <google/protobuf/arena.h>
+ #include <google/protobuf/arenastring.h>
+ #include <google/protobuf/descriptor.pb.h>
+-#include <google/protobuf/generated_message_table_driven.h>
+ #include <google/protobuf/generated_message_util.h>
+ #include <google/protobuf/io/coded_stream.h>
+ #include <google/protobuf/message.h>
+--- a/src/yb/bfql/bfql_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/bfql/bfql_pch.h	2026-08-17 04:56:02.942906843 +0200
+@@ -91,7 +91,6 @@
+ #include <google/protobuf/arena.h>
+ #include <google/protobuf/arenastring.h>
+ #include <google/protobuf/descriptor.pb.h>
+-#include <google/protobuf/generated_message_table_driven.h>
+ #include <google/protobuf/generated_message_util.h>
+ #include <google/protobuf/io/coded_stream.h>
+ #include <google/protobuf/map_entry.h>
+--- a/src/yb/cdc/cdc_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/cdc/cdc_pch.h	2026-08-17 04:56:02.943253228 +0200
+@@ -129,7 +129,6 @@
+ #include <google/protobuf/arena.h>
+ #include <google/protobuf/arenastring.h>
+ #include <google/protobuf/descriptor.pb.h>
+-#include <google/protobuf/generated_message_table_driven.h>
+ #include <google/protobuf/generated_message_util.h>
+ #include <google/protobuf/io/coded_stream.h>
+ #include <google/protobuf/map.h>
+--- a/src/yb/client/client_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/client/client_pch.h	2026-08-17 04:56:02.943776514 +0200
+@@ -141,7 +141,6 @@
+ #include <google/protobuf/arena.h>
+ #include <google/protobuf/arenastring.h>
+ #include <google/protobuf/descriptor.pb.h>
+-#include <google/protobuf/generated_message_table_driven.h>
+ #include <google/protobuf/generated_message_util.h>
+ #include <google/protobuf/io/coded_stream.h>
+ #include <google/protobuf/map.h>
+--- a/src/yb/common/common_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/common/common_pch.h	2026-08-17 04:56:02.944204239 +0200
+@@ -119,7 +119,6 @@
+ #include <google/protobuf/arena.h>
+ #include <google/protobuf/arenastring.h>
+ #include <google/protobuf/descriptor.pb.h>
+-#include <google/protobuf/generated_message_table_driven.h>
+ #include <google/protobuf/generated_message_util.h>
+ #include <google/protobuf/io/coded_stream.h>
+ #include <google/protobuf/map_entry.h>
+--- a/src/yb/consensus/consensus_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/consensus/consensus_pch.h	2026-08-17 04:56:02.944642175 +0200
+@@ -126,7 +126,6 @@
+ #include <google/protobuf/arena.h>
+ #include <google/protobuf/arenastring.h>
+ #include <google/protobuf/descriptor.pb.h>
+-#include <google/protobuf/generated_message_table_driven.h>
+ #include <google/protobuf/generated_message_util.h>
+ #include <google/protobuf/io/coded_stream.h>
+ #include <google/protobuf/map_entry.h>
+--- a/src/yb/docdb/docdb_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/docdb/docdb_pch.h	2026-08-17 04:56:02.945379954 +0200
+@@ -135,7 +135,6 @@
+ #include <google/protobuf/arena.h>
+ #include <google/protobuf/arenastring.h>
+ #include <google/protobuf/descriptor.pb.h>
+-#include <google/protobuf/generated_message_table_driven.h>
+ #include <google/protobuf/generated_message_util.h>
+ #include <google/protobuf/io/coded_stream.h>
+ #include <google/protobuf/map_entry.h>
+--- a/src/yb/dockv/dockv_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/dockv/dockv_pch.h	2026-08-17 04:56:02.945932371 +0200
+@@ -106,7 +106,6 @@
+ #include <google/protobuf/arena.h>
+ #include <google/protobuf/arenastring.h>
+ #include <google/protobuf/descriptor.pb.h>
+-#include <google/protobuf/generated_message_table_driven.h>
+ #include <google/protobuf/generated_message_util.h>
+ #include <google/protobuf/io/coded_stream.h>
+ #include <google/protobuf/map_entry.h>
+--- a/src/yb/encryption/encryption_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/encryption/encryption_pch.h	2026-08-17 04:56:02.946459127 +0200
+@@ -77,7 +77,6 @@
+ #include <glog/logging.h>
+ #include <google/protobuf/arena.h>
+ #include <google/protobuf/arenastring.h>
+-#include <google/protobuf/generated_message_table_driven.h>
+ #include <google/protobuf/generated_message_util.h>
+ #include <google/protobuf/io/coded_stream.h>
+ #include <google/protobuf/map_entry.h>
+--- a/src/yb/fs/fs_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/fs/fs_pch.h	2026-08-17 04:56:02.946788451 +0200
+@@ -79,7 +79,6 @@
+ #include <glog/stl_logging.h>
+ #include <google/protobuf/arena.h>
+ #include <google/protobuf/arenastring.h>
+-#include <google/protobuf/generated_message_table_driven.h>
+ #include <google/protobuf/generated_message_util.h>
+ #include <google/protobuf/io/coded_stream.h>
+ #include <google/protobuf/message.h>
+--- a/src/yb/gen_yrpc/gen_yrpc_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/gen_yrpc/gen_yrpc_pch.h	2026-08-17 04:56:02.947089975 +0200
+@@ -44,7 +44,6 @@
+ #include <google/protobuf/compiler/plugin.h>
+ #include <google/protobuf/descriptor.h>
+ #include <google/protobuf/descriptor.pb.h>
+-#include <google/protobuf/generated_message_table_driven.h>
+ #include <google/protobuf/generated_message_util.h>
+ #include <google/protobuf/io/coded_stream.h>
+ #include <google/protobuf/io/printer.h>
+--- a/src/yb/integration-tests/integration-tests_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/integration-tests/integration-tests_pch.h	2026-08-17 04:56:02.948007076 +0200
+@@ -158,7 +158,6 @@
+ #include <google/protobuf/arena.h>
+ #include <google/protobuf/arenastring.h>
+ #include <google/protobuf/descriptor.pb.h>
+-#include <google/protobuf/generated_message_table_driven.h>
+ #include <google/protobuf/generated_message_util.h>
+ #include <google/protobuf/io/coded_stream.h>
+ #include <google/protobuf/map.h>
+--- a/src/yb/master/master_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/master/master_pch.h	2026-08-17 04:56:02.948705025 +0200
+@@ -157,7 +157,6 @@
+ #include <google/protobuf/arena.h>
+ #include <google/protobuf/arenastring.h>
+ #include <google/protobuf/descriptor.pb.h>
+-#include <google/protobuf/generated_message_table_driven.h>
+ #include <google/protobuf/generated_message_util.h>
+ #include <google/protobuf/io/coded_stream.h>
+ #include <google/protobuf/map.h>
+--- a/src/yb/qlexpr/qlexpr_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/qlexpr/qlexpr_pch.h	2026-08-17 04:56:02.949133520 +0200
+@@ -104,7 +104,6 @@
+ #include <google/protobuf/arena.h>
+ #include <google/protobuf/arenastring.h>
+ #include <google/protobuf/descriptor.pb.h>
+-#include <google/protobuf/generated_message_table_driven.h>
+ #include <google/protobuf/generated_message_util.h>
+ #include <google/protobuf/io/coded_stream.h>
+ #include <google/protobuf/map_entry.h>
+--- a/src/yb/rocksdb/rocksdb_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/rocksdb/rocksdb_pch.h	2026-08-17 04:56:02.949550155 +0200
+@@ -102,7 +102,6 @@
+ #include <google/protobuf/any.pb.h>
+ #include <google/protobuf/arena.h>
+ #include <google/protobuf/arenastring.h>
+-#include <google/protobuf/generated_message_table_driven.h>
+ #include <google/protobuf/generated_message_util.h>
+ #include <google/protobuf/io/coded_stream.h>
+ #include <google/protobuf/map_entry.h>
+--- a/src/yb/rpc/rpc_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/rpc/rpc_pch.h	2026-08-17 04:56:02.950105992 +0200
+@@ -129,7 +129,6 @@
+ #include <google/protobuf/arena.h>
+ #include <google/protobuf/arenastring.h>
+ #include <google/protobuf/descriptor.pb.h>
+-#include <google/protobuf/generated_message_table_driven.h>
+ #include <google/protobuf/generated_message_util.h>
+ #include <google/protobuf/io/coded_stream.h>
+ #include <google/protobuf/map_entry.h>
+--- a/src/yb/server/server_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/server/server_pch.h	2026-08-17 04:56:02.950831781 +0200
+@@ -111,7 +111,6 @@
+ #include <google/protobuf/arena.h>
+ #include <google/protobuf/arenastring.h>
+ #include <google/protobuf/descriptor.pb.h>
+-#include <google/protobuf/generated_message_table_driven.h>
+ #include <google/protobuf/generated_message_util.h>
+ #include <google/protobuf/io/coded_stream.h>
+ #include <google/protobuf/message.h>
+--- a/src/yb/tablet/tablet_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/tablet/tablet_pch.h	2026-08-17 04:56:02.951545659 +0200
+@@ -140,7 +140,6 @@
+ #include <google/protobuf/arena.h>
+ #include <google/protobuf/arenastring.h>
+ #include <google/protobuf/descriptor.pb.h>
+-#include <google/protobuf/generated_message_table_driven.h>
+ #include <google/protobuf/generated_message_util.h>
+ #include <google/protobuf/io/coded_stream.h>
+ #include <google/protobuf/map_entry.h>
+--- a/src/yb/tools/tools_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/tools/tools_pch.h	2026-08-17 04:56:02.952062575 +0200
+@@ -149,7 +149,6 @@
+ #include <google/protobuf/arena.h>
+ #include <google/protobuf/arenastring.h>
+ #include <google/protobuf/descriptor.pb.h>
+-#include <google/protobuf/generated_message_table_driven.h>
+ #include <google/protobuf/generated_message_util.h>
+ #include <google/protobuf/io/coded_stream.h>
+ #include <google/protobuf/map.h>
+--- a/src/yb/tserver/tserver_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/tserver/tserver_pch.h	2026-08-17 04:56:02.952662803 +0200
+@@ -148,7 +148,6 @@
+ #include <google/protobuf/arena.h>
+ #include <google/protobuf/arenastring.h>
+ #include <google/protobuf/descriptor.pb.h>
+-#include <google/protobuf/generated_message_table_driven.h>
+ #include <google/protobuf/generated_message_util.h>
+ #include <google/protobuf/io/coded_stream.h>
+ #include <google/protobuf/map.h>
+--- a/src/yb/util/util_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/util/util_pch.h	2026-08-17 04:56:02.954147781 +0200
+@@ -173,7 +173,6 @@
+ #include <google/protobuf/descriptor.pb.h>
+ #include <google/protobuf/descriptor_database.h>
+ #include <google/protobuf/dynamic_message.h>
+-#include <google/protobuf/generated_message_table_driven.h>
+ #include <google/protobuf/generated_message_util.h>
+ #include <google/protobuf/io/coded_stream.h>
+ #include <google/protobuf/io/printer.h>
+--- a/src/yb/yql/cql/cqlserver/cqlserver_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/yql/cql/cqlserver/cqlserver_pch.h	2026-08-17 04:56:02.954832649 +0200
+@@ -138,7 +138,6 @@
+ #include <google/protobuf/arena.h>
+ #include <google/protobuf/arenastring.h>
+ #include <google/protobuf/descriptor.pb.h>
+-#include <google/protobuf/generated_message_table_driven.h>
+ #include <google/protobuf/generated_message_util.h>
+ #include <google/protobuf/io/coded_stream.h>
+ #include <google/protobuf/map.h>
+--- a/src/yb/yql/cql/ql/ql_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/yql/cql/ql/ql_pch.h	2026-08-17 04:56:02.955222924 +0200
+@@ -140,7 +140,6 @@
+ #include <google/protobuf/arena.h>
+ #include <google/protobuf/arenastring.h>
+ #include <google/protobuf/descriptor.pb.h>
+-#include <google/protobuf/generated_message_table_driven.h>
+ #include <google/protobuf/generated_message_util.h>
+ #include <google/protobuf/io/coded_stream.h>
+ #include <google/protobuf/map.h>
+--- a/src/yb/yql/pggate/pggate_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/yql/pggate/pggate_pch.h	2026-08-17 04:56:02.955772821 +0200
+@@ -131,7 +131,6 @@
+ #include <google/protobuf/arena.h>
+ #include <google/protobuf/arenastring.h>
+ #include <google/protobuf/descriptor.pb.h>
+-#include <google/protobuf/generated_message_table_driven.h>
+ #include <google/protobuf/generated_message_util.h>
+ #include <google/protobuf/io/coded_stream.h>
+ #include <google/protobuf/map_entry.h>
+--- a/src/yb/yql/pgwrapper/pgwrapper_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/yql/pgwrapper/pgwrapper_pch.h	2026-08-17 04:56:02.956352548 +0200
+@@ -145,7 +145,6 @@
+ #include <google/protobuf/arena.h>
+ #include <google/protobuf/arenastring.h>
+ #include <google/protobuf/descriptor.pb.h>
+-#include <google/protobuf/generated_message_table_driven.h>
+ #include <google/protobuf/generated_message_util.h>
+ #include <google/protobuf/io/coded_stream.h>
+ #include <google/protobuf/map.h>
+--- a/src/yb/yql/redis/redisserver/redisserver_pch.h	2026-08-06 03:52:33.000000000 +0200
++++ b/src/yb/yql/redis/redisserver/redisserver_pch.h	2026-08-17 04:56:02.957006656 +0200
+@@ -133,7 +133,6 @@
+ #include <google/protobuf/arena.h>
+ #include <google/protobuf/arenastring.h>
+ #include <google/protobuf/descriptor.pb.h>
+-#include <google/protobuf/generated_message_table_driven.h>
+ #include <google/protobuf/generated_message_util.h>
+ #include <google/protobuf/io/coded_stream.h>
+ #include <google/protobuf/map.h>
+--- a/src/yb/tablet/tablet_snapshots.cc
++++ b/src/yb/tablet/tablet_snapshots.cc
+@@ -13,6 +13,8 @@
+ 
+ #include "yb/tablet/tablet_snapshots.h"
+ 
++#include <vector>
++
+ #include <boost/algorithm/string/predicate.hpp>
+ 
+ #include "yb/ash/wait_state.h"
+@@ -109,7 +111,7 @@
+   std::optional<qlexpr::IndexMap> index_map;
+   uint32_t schema_version;
+   bool hide;
+-  google::protobuf::RepeatedPtrField<ColocatedTableMetadata> colocated_tables_metadata;
++  std::vector<ColocatedTableMetadata> colocated_tables_metadata;
+ };
+ 
+ struct TabletSnapshots::ColocatedTableMetadata {
+@@ -392,7 +394,8 @@
+   }
+ 
+   for (const auto& entry : request.colocated_tables_metadata()) {
+-    auto* table_metadata = restore_metadata.colocated_tables_metadata.Add();
++    restore_metadata.colocated_tables_metadata.emplace_back();
++    auto* table_metadata = &restore_metadata.colocated_tables_metadata.back();
+     table_metadata->schema_version = entry.schema_version();
+     table_metadata->schema.emplace();
+     RETURN_NOT_OK(SchemaFromPB(entry.schema().ToGoogleProtobuf(), &table_metadata->schema.value()));
+--- a/src/yb/tserver/xcluster_safe_time_map.h
++++ b/src/yb/tserver/xcluster_safe_time_map.h
+@@ -13,6 +13,7 @@
+ 
+ #pragma once
+ 
++#include <cstdint>
+ #include <optional>
+ #include <string>
+ 
+@@ -25,7 +26,7 @@
+ 
+ // Map[NamespaceId]:xClusterSafeTime
+ using XClusterNamespaceToSafeTimePBMap =
+-    google::protobuf::Map<std::string, google::protobuf::uint64>;
++    google::protobuf::Map<std::string, uint64_t>;
+ 
+ class XClusterSafeTimeMap {
+  public:
+--- a/src/yb/tablet/tablet_metadata.h
++++ b/src/yb/tablet/tablet_metadata.h
+@@ -307,7 +307,7 @@
+                           public docdb::SchemaPackingProvider {
+  public:
+   using TableIdToSchemaVersionMap =
+-      ::google::protobuf::Map<::std::string, ::google::protobuf::uint32>;
++      ::google::protobuf::Map<::std::string, uint32_t>;
+ 
+   // Create metadata for a new Raft group. This assumes that the given superblock
+   // has not been written before, and writes out the initial superblock with
+--- a/src/yb/client/client.h
++++ b/src/yb/client/client.h
+@@ -358,7 +358,7 @@
+ 
+   Status GetIndexBackfillProgress(
+       const TableIds& index_ids,
+-      google::protobuf::RepeatedField<google::protobuf::uint64>*
++      google::protobuf::RepeatedField<uint64_t>*
+           num_rows_read_from_table_for_backfill,
+       google::protobuf::RepeatedField<double>* num_rows_backfilled_in_index);
+ 
+--- a/src/yb/client/client.cc
++++ b/src/yb/client/client.cc
+@@ -642,7 +642,7 @@
+ 
+ Status YBClient::GetIndexBackfillProgress(
+     const TableIds& index_ids,
+-    RepeatedField<google::protobuf::uint64>* num_rows_read_from_table_for_backfill,
++    RepeatedField<uint64_t>* num_rows_read_from_table_for_backfill,
+     RepeatedField<double>* num_rows_backfilled_in_index) {
+   GetIndexBackfillProgressRequestPB req;
+   GetIndexBackfillProgressResponsePB resp;
+--- a/src/yb/qlexpr/index.cc
++++ b/src/yb/qlexpr/index.cc
+@@ -33,7 +33,6 @@
+ using std::string;
+ using google::protobuf::RepeatedField;
+ using google::protobuf::RepeatedPtrField;
+-using google::protobuf::uint32;
+ 
+ namespace yb::qlexpr {
+ 
+@@ -69,7 +68,7 @@
+   return cols;
+ }
+ 
+-vector<ColumnId> ColumnIdsFromPB(const RepeatedField<uint32>& ids) {
++vector<ColumnId> ColumnIdsFromPB(const RepeatedField<uint32_t>& ids) {
+   vector<ColumnId> column_ids;
+   column_ids.reserve(ids.size());
+   for (const auto& id : ids) {
+--- a/src/yb/rpc/remote_method.cc
++++ b/src/yb/rpc/remote_method.cc
+@@ -35,7 +35,6 @@
+ #include "yb/rpc/rpc_header.pb.h"
+ 
+ #include "yb/util/format.h"
+-#include "yb/util/scope_exit.h"
+ 
+ using std::string;
+ 
+@@ -46,13 +45,9 @@
+                            std::string method_name)
+     : service_name_(std::move(service_name)), method_name_(std::move(method_name)) {
+   RequestHeader pb;
+-  // TODO(#26139): this set_allocated_* call is not safe.
+-  pb.mutable_remote_method()->set_allocated_service_name(&service_name_);
+-  pb.mutable_remote_method()->set_allocated_method_name(&method_name_);
+-  auto se = ScopeExit([&pb] {
+-    (void) pb.mutable_remote_method()->release_method_name();
+-    (void) pb.mutable_remote_method()->release_service_name();
+-  });
++  // protobuf 32 SetAllocated may free/own the pointer. Copy instead.
++  pb.mutable_remote_method()->set_service_name(service_name_);
++  pb.mutable_remote_method()->set_method_name(method_name_);
+   serialized_ = pb.SerializeAsString();
+ }
+ 

@@ -1,0 +1,11 @@
+#!/bin/sh
+# Launch a YugabyteDB binary from the private install tree.
+# The tree is self-contained (bundled third-party libs, rpath).
+bindir=/usr/lib/yugabyte/bin
+cmd=${0##*/}
+if [ ! -x "$bindir/$cmd" ]; then
+	echo "$0: $bindir/$cmd is not installed" >&2
+	exit 127
+fi
+export YB_HOME=/usr/lib/yugabyte
+exec "$bindir/$cmd" "$@"

@@ -1,0 +1,12 @@
+sources:
+  yugabyte-db-2026.1.1.0.tar.gz: d7612a9e7ad74b59c331401060e935a7c97a9669
+  yugabyte-db-thirdparty-e42841c02e3e540840ba44ae23cd2adc3c2c245d.tar.gz: acc78da3e2e39fbc1cd8563799af411b13836793
+  yugabyte-bash-common-74793a6e1712ac45dc07cd430da303c95d37f584.tar.gz: 0202e8e00f99428ccdec3eba41d00f8bbafa5652
+  yugabyte-offline-deps-2026.1.1.0.tar.xz: cc89be591102d9a62dcd22feae4fae29b788d6a7
+  sys_detection-1.3.4.tar.gz: 7c8858a65a8c8343ced423f4e4ca8b66cf5ad088
+  compiler-identification-1.0.3.tar.gz: 14b232b84dc651102de003d11da40681b6ee0cff
+  yugabyte_pycommon-1.9.15.tar.gz: 2f00638ca81c23d8b135465cb79229a57cbae309
+  argparse_utils-1.3.0.tar.gz: aedb624df1c6aee92de027e24294235f929f9a94
+  overrides-7.7.0.tar.gz: 38963631d7e82cb4e227843a236ad658ba30e50f
+  autorepr-0.3.0.tar.gz: 6b40dddc039656fe32960229985b18b58f39bc10
+  bazel-5.3.1-linux-x86_64: 60faa9791cdbd5e35b882b8d4b07977ef9a488ee

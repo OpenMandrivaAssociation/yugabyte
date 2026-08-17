@@ -1,0 +1,14 @@
+diff -u -N -r a/src/create_venv.sh b/src/create_venv.sh
+--- a/src/create_venv.sh	2026-08-16 17:46:39.623915572 +0200
++++ b/src/create_venv.sh	2026-08-16 17:46:39.624970725 +0200
+@@ -224,6 +224,10 @@
+ #   - Directory containing the requirements.txt file
+ #   - Venv directory (optional)
+ function yb_activate_virtualenv() {
++  # Distro packaging: system Python + PYTHONPATH, never create a venv or run pip.
++  if [[ ${YB_USE_SYSTEM_PYTHON:-0} == 1 ]]; then
++    return 0
++  fi
+   # Expand the path here, we don't want it to be ".".
+   local root_dir
+   root_dir=$(realpath "${1}")

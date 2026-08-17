@@ -1,0 +1,24 @@
+[Unit]
+Description=YugabyteDB tablet server
+Documentation=https://docs.yugabyte.com/
+After=network-online.target yugabyte-master.service
+Wants=network-online.target
+Wants=yugabyte-master.service
+
+[Service]
+Type=simple
+User=yugabyte
+Group=yugabyte
+EnvironmentFile=-/etc/yugabyte/tserver.conf
+ExecStart=/usr/lib/yugabyte/bin/yb-tserver $YB_TSERVER_ARGS
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=1048576
+LimitNPROC=infinity
+TimeoutStopSec=60
+WorkingDirectory=/var/lib/yugabyte
+
+TasksMax=infinity
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,273 @@
+--- a/python/build_definitions/cassandra_cpp_driver.py	2026-06-10 15:03:35.000000000 +0200
++++ b/python/build_definitions/cassandra_cpp_driver.py	2026-08-17 01:22:30.117319132 +0200
+@@ -26,7 +26,11 @@
+                 'https://github.com/yugabyte/cassandra-cpp-driver/archive/{0}.tar.gz',
+                 BuildGroup.POTENTIALLY_INSTRUMENTED)
+         self.copy_sources = False
+-        self.patch_version = 0
++        self.patch_version = 1
++        self.patches = [
++            'cassandra-cmake4-policies.patch',
++            'cassandra-openssl4-const.patch',
++        ]
+ 
+     def build(self, builder: BuilderInterface) -> None:
+         if not is_macos():
+--- a/python/build_definitions/clockbound.py	2026-06-10 15:03:35.000000000 +0200
++++ b/python/build_definitions/clockbound.py	2026-08-17 01:22:30.117685635 +0200
+@@ -50,11 +50,11 @@
+         log_prefix = builder.log_prefix(self)
+         log("Building dependency %s using cargo", self.name)
+ 
+-        # Find the cargo binary in $HOME/.cargo/bin
++        # rustup installs into $HOME/.cargo/bin; distros put cargo on PATH.
+         cargo_bin = os.path.expanduser("~/.cargo/bin/cargo")
+-
+-        # Raise RuntimeError if cargo binary is not found
+         if not os.path.exists(cargo_bin):
++            cargo_bin = shutil.which("cargo") or ""
++        if not cargo_bin or not os.path.exists(cargo_bin):
+             raise RuntimeError(
+                 "cargo binary not found. Please check if Rust is installed.")
+ 
+--- a/python/build_definitions/crcutil.py	2026-06-10 15:03:35.000000000 +0200
++++ b/python/build_definitions/crcutil.py	2026-08-17 01:22:30.117966337 +0200
+@@ -30,12 +30,9 @@
+         self.patches = ['crcutil-fix-offsetof.patch']
+ 
+     def get_additional_compiler_flags(self, builder: BuilderInterface) -> List[str]:
+-        if (builder.compiler_choice.compiler_family == 'gcc' and
+-                platform.uname().processor == 'x86_64'):
+-            # -mcrc32 (https://gcc.gnu.org/onlinedocs/gcc/x86-Options.html)
+-            # This option enables built-in functions __builtin_ia32_crc32qi, __builtin_ia32_crc32hi,
+-            # __builtin_ia32_crc32si and __builtin_ia32_crc32di to generate the crc32 machine
+-            # instruction.
++        if platform.uname().processor == 'x86_64':
++            # -mcrc32 enables __builtin_ia32_crc32*. GCC has always needed
++            # this; Clang 23 now does too (needs target feature crc32).
+             return ['-mcrc32']
+         return []
+ 
+--- a/python/build_definitions/gperftools.py	2026-06-10 15:03:35.000000000 +0200
++++ b/python/build_definitions/gperftools.py	2026-08-17 01:22:30.118071747 +0200
+@@ -35,7 +35,12 @@
+                 log_prefix, ['./configure', '--prefix={}'.format(builder.prefix),
+                              '--enable-frame-pointers', '--enable-heap-checker', '--with-pic'])
+         builder.log_output(log_prefix, ['make', 'clean'])
+-        builder.log_output(log_prefix, ['make', 'install', '-j', '1'])
++        # slibtool + lld cannot link the in-tree profiler unittests
++        # (-lstacktrace is not yet installed). We only need the libraries.
++        builder.log_output(log_prefix, [
++            'make', 'install', '-j', '1',
++            'noinst_PROGRAMS=', 'check_PROGRAMS=', 'TESTS=',
++        ])
+ 
+     def should_build(self, builder: BuilderInterface) -> bool:
+         return builder.is_release_build()
+--- a/python/build_definitions/tcmalloc.py	2026-06-10 15:03:35.000000000 +0200
++++ b/python/build_definitions/tcmalloc.py	2026-08-17 01:22:30.118385480 +0200
+@@ -56,6 +56,13 @@
+ 
+     def get_additional_cxx_flags(self, builder: 'BuilderInterface') -> List[str]:
+         cxx_flags = []
++        if builder.compiler_choice.is_clang():
++            # Abseil 20240722 pragmas mention GCC-only -Wmaybe-uninitialized.
++            # Clang 16+ turns unknown warning groups into -Werror.
++            cxx_flags.append('-Wno-unknown-warning-option')
++            # Clang 23: aliasing sized/aligned operator delete onto unsized
++            # delete is -Werror=attribute-alias.
++            cxx_flags.append('-Wno-attribute-alias')
+         if (builder.compiler_choice.is_clang() and
+                 builder.compiler_choice.is_llvm_major_version_at_least(18)):
+             cxx_flags.append('-Wno-error=thread-safety-reference-return')
+--- a/python/yugabyte_db_thirdparty/builder.py	2026-06-10 15:03:35.000000000 +0200
++++ b/python/yugabyte_db_thirdparty/builder.py	2026-08-17 01:22:30.118644752 +0200
+@@ -84,7 +84,7 @@
+ )
+ from yugabyte_db_thirdparty.file_system_layout import FileSystemLayout
+ from yugabyte_db_thirdparty import file_system_layout
+-from yugabyte_db_thirdparty.toolchain import Toolchain, ensure_toolchains_installed
++# Toolchain import is lazy: toolchain.py pulls in llvm_installer + downloadutil.
+ from yugabyte_db_thirdparty.clang_util import (
+     get_clang_library_dir,
+     get_clang_include_dir,
+@@ -201,6 +201,7 @@
+         self.dependencies_by_name = {}
+ 
+     def install_toolchain(self) -> None:
++        from yugabyte_db_thirdparty.toolchain import ensure_toolchains_installed
+         self.toolchain = ensure_toolchains_installed(
+                 self.download_manager, [self.args.toolchain])[0]
+ 
+@@ -881,12 +882,17 @@
+             # doesn't work on macOS builds when Xcode is installed.
+             build_command += ["--action_env", f"BAZEL_USE_CPP_ONLY_TOOLCHAIN=1"]
+         build_command += ["--cxxopt", cxx_std_flag]
++        # Target BUILD files pass -Werror after BAZEL_CXXOPTS. New clang
++        # diagnostics then fail the 2024 abseil/tcmalloc forks.
++        if self.compiler_choice.is_clang():
++            build_command += ["--cxxopt", "-Wno-error"]
+ 
+         # Need to explicitly pass environment variables which we want to be available.
+         env_vars_to_copy = [
+             "CC",
+             "CXX",
+             "PATH",
++            "PYTHONPATH",
+             "YB_BAZEL_BUILD_DIR",
+             "YB_THIRDPARTY_REAL_C_COMPILER",
+             "YB_THIRDPARTY_REAL_CXX_COMPILER",
+@@ -1520,9 +1526,19 @@
+                       "for the build configuration of '%s'.", abs_path, dep.name)
+ 
+         with PushDir(YB_THIRDPARTY_DIR):
+-            git_commit_sha1 = subprocess.check_output(
+-                ['git', 'log', '--pretty=%H', '-n', '1'] + input_files_for_stamp
+-            ).strip().decode('utf-8')
++            # Distro packaging: GitHub release tarballs have no .git. Hash the stamp
++            # files directly so we can still decide when to rebuild.
++            try:
++                git_commit_sha1 = subprocess.check_output(
++                    ['git', 'log', '--pretty=%H', '-n', '1'] + input_files_for_stamp,
++                    stderr=subprocess.DEVNULL
++                ).strip().decode('utf-8')
++            except (subprocess.CalledProcessError, FileNotFoundError):
++                hasher = hashlib.sha256()
++                for path in input_files_for_stamp:
++                    with open(os.path.join(YB_THIRDPARTY_DIR, path), 'rb') as inp:
++                        hasher.update(inp.read())
++                return 'file_sha256=%s\n' % hasher.hexdigest()
+             build_stamp = 'git_commit_sha1={}\n'.format(git_commit_sha1)
+             for git_extra_arg in (None, '--cached'):
+                 git_extra_args = [git_extra_arg] if git_extra_arg else []
+--- a/python/yugabyte_db_thirdparty/builder_interface.py	2026-06-10 15:03:35.000000000 +0200
++++ b/python/yugabyte_db_thirdparty/builder_interface.py	2026-08-17 01:22:30.118896773 +0200
+@@ -15,7 +15,6 @@
+ 
+ from build_definitions import BuildType
+ from yugabyte_db_thirdparty.file_system_layout import FileSystemLayout
+-from yugabyte_db_thirdparty.toolchain import Toolchain
+ 
+ if TYPE_CHECKING:
+     from .dependency import Dependency
+--- a/python/yugabyte_db_thirdparty/cmd_line_args.py	2026-06-10 15:03:35.000000000 +0200
++++ b/python/yugabyte_db_thirdparty/cmd_line_args.py	2026-08-17 01:22:30.119064015 +0200
+@@ -25,7 +25,11 @@
+ 
+ from yugabyte_db_thirdparty.checksums import CHECKSUM_FILE_NAME
+ from yugabyte_db_thirdparty.util import log
+-from yugabyte_db_thirdparty.toolchain import TOOLCHAIN_TYPES
++# Duplicated from toolchain.py so we do not import llvm_installer/downloadutil.
++TOOLCHAIN_TYPES = (
++    ['llvm%d' % v for v in range(19, 22)] +
++    ['gcc%d' % v for v in range(12, 16)]
++)
+ from yugabyte_db_thirdparty.constants import ADD_CHECKSUM_ARG, ADD_CHECKSUM_ALTERNATE_ARG
+ 
+ from yugabyte_db_thirdparty import intel_oneapi, env_var_names
+--- a/python/yugabyte_db_thirdparty/compiler_wrapper.py	2026-06-10 15:03:35.000000000 +0200
++++ b/python/yugabyte_db_thirdparty/compiler_wrapper.py	2026-08-17 01:22:30.119244396 +0200
+@@ -339,6 +339,10 @@
+ 
+         self.handle_compilation_command(output_files)
+ 
++        # Distro packaging: third-party BUILD files put -Werror after our
++        # --cxxopt flags. Clang 23 then fails old tcmalloc/abseil.
++        cmd_args = [arg for arg in cmd_args if arg != '-Werror']
++
+         cmd_str = '( cd %s; %s )' % (shlex.quote(os.getcwd()), shlex_join(cmd_args))
+ 
+         if verbose:
+--- a/yb-thirdparty-common.sh	2026-06-10 15:03:35.000000000 +0200
++++ b/yb-thirdparty-common.sh	2026-08-17 01:22:30.119420127 +0200
+@@ -42,6 +42,10 @@
+ }
+ 
+ activate_virtualenv() {
++  # Distro packaging: use system Python modules, never pip/venv.
++  if [[ ${YB_USE_SYSTEM_PYTHON:-0} == 1 ]]; then
++    return
++  fi
+   if [[ ! -d $YB_THIRDPARTY_DIR/venv ]]; then
+     "${PYTHON:-python3}" -m venv "$YB_THIRDPARTY_DIR/venv"
+   fi
+--- a/patches/cassandra-cmake4-policies.patch	2026-08-12 00:22:09.765536733 +0200
++++ b/patches/cassandra-cmake4-policies.patch	2026-08-17 01:22:30.117143701 +0200
+@@ -0,0 +1,26 @@
++--- a/cmake/modules/CppDriver.cmake
+++++ b/cmake/modules/CppDriver.cmake
++@@ -286,12 +286,12 @@
++ macro(CassPolicies)
++   # TODO: Figure out Mac OS X rpath
++   if(POLICY CMP0042)
++-    cmake_policy(SET CMP0042 OLD)
+++    cmake_policy(SET CMP0042 NEW)
++   endif()
++
++   # Force OLD style of project versioning variables
++   if(POLICY CMP0048)
++-    cmake_policy(SET CMP0048 OLD)
+++    cmake_policy(SET CMP0048 NEW)
++   endif()
++ endmacro()
++
++@@ -687,7 +687,7 @@
++ macro(CassSetCompilerFlags)
++   # Force OLD style of implicitly dereferencing variables
++   if(POLICY CMP0054)
++-    cmake_policy(SET CMP0054 OLD)
+++    cmake_policy(SET CMP0054 NEW)
++   endif()
++
++   # Determine if all GNU extensions should be enabled
+--- a/patches/cassandra-openssl4-const.patch	2026-08-12 00:22:09.765536733 +0200
++++ b/patches/cassandra-openssl4-const.patch	2026-08-17 01:22:30.117238631 +0200
+@@ -0,0 +1,48 @@
++--- a/src/ssl/ssl_openssl_impl.cpp
+++++ b/src/ssl/ssl_openssl_impl.cpp
++@@ -275,19 +275,19 @@
++ 
++ private:
++   static Result match_common_name_ipaddr(X509* cert, const std::string& address) {
++-    X509_NAME* name = X509_get_subject_name(cert);
+++    const X509_NAME* name = X509_get_subject_name(cert);
++     if (name == NULL) {
++       return INVALID_CERT;
++     }
++ 
++     int i = -1;
++     while ((i = X509_NAME_get_index_by_NID(name, NID_commonName, i)) > 0) {
++-      X509_NAME_ENTRY* name_entry = X509_NAME_get_entry(name, i);
+++      const X509_NAME_ENTRY* name_entry = X509_NAME_get_entry(name, i);
++       if (name_entry == NULL) {
++         return INVALID_CERT;
++       }
++ 
++-      ASN1_STRING* str = X509_NAME_ENTRY_get_data(name_entry);
+++      const ASN1_STRING* str = X509_NAME_ENTRY_get_data(name_entry);
++       if (str == NULL) {
++         return INVALID_CERT;
++       }
++@@ -306,19 +306,19 @@
++   }
++ 
++   static Result match_common_name_dns(X509* cert, const std::string& hostname) {
++-    X509_NAME* name = X509_get_subject_name(cert);
+++    const X509_NAME* name = X509_get_subject_name(cert);
++     if (name == NULL) {
++       return INVALID_CERT;
++     }
++ 
++     int i = -1;
++     while ((i = X509_NAME_get_index_by_NID(name, NID_commonName, i)) > 0) {
++-      X509_NAME_ENTRY* name_entry = X509_NAME_get_entry(name, i);
+++      const X509_NAME_ENTRY* name_entry = X509_NAME_get_entry(name, i);
++       if (name_entry == NULL) {
++         return INVALID_CERT;
++       }
++ 
++-      ASN1_STRING* str = X509_NAME_ENTRY_get_data(name_entry);
+++      const ASN1_STRING* str = X509_NAME_ENTRY_get_data(name_entry);
++       if (str == NULL) {
++         return INVALID_CERT;
++       }

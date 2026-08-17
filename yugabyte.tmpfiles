@@ -1,0 +1,5 @@
+d /run/yugabyte 0755 yugabyte yugabyte -
+d /var/lib/yugabyte 0755 yugabyte yugabyte -
+d /var/lib/yugabyte/master 0750 yugabyte yugabyte -
+d /var/lib/yugabyte/tserver 0750 yugabyte yugabyte -
+d /var/log/yugabyte 0755 yugabyte yugabyte -
