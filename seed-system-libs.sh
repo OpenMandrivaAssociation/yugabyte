@@ -197,14 +197,45 @@ link_so libverto.so
 link_so libaio.so
 [ -e "$libdir/libaio.a" ] && ln -sfn "$libdir/libaio.a" "$dest/lib/libaio.a"
 
-# libunwind — we skip llvm_libunwind (it downloads a full LLVM). System
-# is the matching LLVM 23 unwind.
-[ -e /usr/include/libunwind.h ] && ln -sfn /usr/include/libunwind.h "$dest/include/libunwind.h"
+# libunwind — we skip llvm_libunwind (it downloads a full LLVM).
+# OpenMandriva puts the .so/.a under $libdir/libunwind/ and the header
+# under /usr/include/libunwind/. FindLibUnwind wants libunwind.h at the
+# include root plus libunwind.so, libunwind-$arch.so, and the .a files.
+if [ -e /usr/include/libunwind.h ]; then
+	ln -sfn /usr/include/libunwind.h "$dest/include/libunwind.h"
+elif [ -e /usr/include/libunwind/libunwind.h ]; then
+	ln -sfn /usr/include/libunwind/libunwind.h "$dest/include/libunwind.h"
+fi
 if [ -d /usr/include/libunwind ]; then
 	ln -sfn /usr/include/libunwind "$dest/include/libunwind"
 fi
-link_so libunwind.so
-[ -e "$libdir/libunwind.a" ] && ln -sfn "$libdir/libunwind.a" "$dest/lib/libunwind.a"
+unwind_lib=
+for udir in "$libdir/libunwind" "$libdir"; do
+	if [ -e "$udir/libunwind.so" ] || [ -e "$udir/libunwind.a" ]; then
+		unwind_lib=$udir
+		break
+	fi
+done
+if [ -n "$unwind_lib" ]; then
+	for n in libunwind.so libunwind.a \
+		libunwind-x86_64.so libunwind-x86_64.a \
+		libunwind-aarch64.so libunwind-aarch64.a \
+		libunwind-arm.so libunwind-arm.a \
+		libunwind-generic.so libunwind-generic.a; do
+		if [ -e "$unwind_lib/$n" ]; then
+			ln -sfn "$unwind_lib/$n" "$dest/lib/$n"
+			real=$(readlink -f "$unwind_lib/$n" 2>/dev/null || true)
+			if [ -n "$real" ] && [ -e "$real" ]; then
+				ln -sfn "$real" "$dest/lib/$(basename "$real")"
+			fi
+		fi
+	done
+	# Versioned SONAMEs (libunwind.so.8, libunwind-x86_64.so.8, …).
+	for f in "$unwind_lib"/libunwind.so.* "$unwind_lib"/libunwind-*.so.*; do
+		[ -e "$f" ] || continue
+		ln -sfn "$f" "$dest/lib/$(basename "$f")"
+	done
+fi
 
 # libbacktrace — Yugabyte vendors an older Ian Lance Taylor snapshot
 # (yugabyte/libbacktrace @ 8602fda, copyright through 2021). The public

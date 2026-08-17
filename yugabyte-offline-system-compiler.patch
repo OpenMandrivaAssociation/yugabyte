@@ -626,3 +626,29 @@ diff -urN orig/yugabyte-db-2026.1.1.0/yb_build.sh new/yugabyte-db-2026.1.1.0/yb_
  fi
  
  if [[ $build_type == "prof_gen" ]]; then
+diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindLibUnwind.cmake new/yugabyte-db-2026.1.1.0/cmake_modules/FindLibUnwind.cmake
+--- a/cmake_modules/FindLibUnwind.cmake
++++ b/cmake_modules/FindLibUnwind.cmake
+@@ -53,6 +53,7 @@
+ endif()
+ 
+ find_path(UNWIND_INCLUDE_DIR libunwind.h
++  PATH_SUFFIXES libunwind
+   NO_CMAKE_SYSTEM_PATH
+   NO_SYSTEM_ENVIRONMENT_PATH)
+ 
+@@ -76,6 +77,14 @@
+     NO_SYSTEM_ENVIRONMENT_PATH)
+ endif()
+ 
++# Distro may ship only shared libs, or only the unversioned .so.
++if(NOT UNWIND_STATIC_LIB AND UNWIND_SHARED_LIB)
++  set(UNWIND_STATIC_LIB "${UNWIND_SHARED_LIB}" CACHE FILEPATH "" FORCE)
++endif()
++if(UNWIND_HAS_ARCH_SPECIFIC_LIB AND NOT UNWIND_STATIC_ARCH_LIB AND UNWIND_SHARED_ARCH_LIB)
++  set(UNWIND_STATIC_ARCH_LIB "${UNWIND_SHARED_ARCH_LIB}" CACHE FILEPATH "" FORCE)
++endif()
++
+ include(FindPackageHandleStandardArgs)
+ 
+ set(_UNWIND_REQUIRED_VARS
