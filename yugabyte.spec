@@ -19,7 +19,7 @@
 # and `abb store` the resulting archives before kicking off a build.
 
 Name:		yugabyte
-Version:	2026.1.1.0
+Version:	2026.1.1.2
 Release:	1
 Summary:	PostgreSQL-compatible distributed SQL database
 Group:		Databases
@@ -31,10 +31,10 @@ URL:		https://www.yugabyte.com/
 #   https://github.com/yugabyte/yugabyte-db-thirdparty/archive/<commit>.tar.gz
 #   https://github.com/yugabyte/yugabyte-bash-common/archive/<commit>.tar.gz
 Source0:	yugabyte-db-%{version}.tar.gz
-# Pinned by v2026.1.1.0 build-support/thirdparty_archives.yml
+# Pinned by v2026.1.1.2 build-support/thirdparty_archives.yml
 %define thirdparty_commit e42841c02e3e540840ba44ae23cd2adc3c2c245d
 Source1:	yugabyte-db-thirdparty-%{thirdparty_commit}.tar.gz
-# Pinned by v2026.1.1.0 build-support/yugabyte-bash-common-sha1.txt
+# Pinned by v2026.1.1.2 build-support/yugabyte-bash-common-sha1.txt
 %define bashcommon_commit 74793a6e1712ac45dc07cd430da303c95d37f584
 Source2:	yugabyte-bash-common-%{bashcommon_commit}.tar.gz
 # Third-party C/C++ source archives (same script). No Python wheels.
