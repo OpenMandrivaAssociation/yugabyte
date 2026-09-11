@@ -68,6 +68,7 @@ Patch1:		yugabyte-thirdparty-offline.patch
 Patch2:		yugabyte-bash-common-offline-venv.patch
 Patch3:		yugabyte-system-api.patch
 Patch4:		yugabyte-protobuf32.patch
+Patch5:		yugabyte-boost-1.92.patch
 
 # Upstream only supports x86_64 and aarch64 (CMakeLists fatals otherwise).
 ExclusiveArch:	%{x86_64} aarch64
@@ -194,6 +195,7 @@ Then connect with:
 %patch -P 0 -p1
 %patch -P 3 -p1
 %patch -P 4 -p1
+%patch -P 5 -p1
 
 cd %{_builddir}
 tar -xf %{SOURCE1}

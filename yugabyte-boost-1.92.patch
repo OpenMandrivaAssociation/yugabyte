@@ -1,0 +1,35 @@
+--- a/cmake_modules/YugabyteFindThirdParty.cmake	2026-09-11 23:05:34.982082985 +0200
++++ b/cmake_modules/YugabyteFindThirdParty.cmake	2026-09-11 23:05:35.899234808 +0200
+@@ -323,18 +323,30 @@
+ 
+   # Find Boost static libraries.
+   set(Boost_USE_STATIC_LIBS ON)
+-  find_package(Boost COMPONENTS system thread atomic REQUIRED)
++  # CMake's FindBoost version table does not know 1.92 yet, so COMPONENTS
++  # thread/atomic fail even when the libraries are present.
++  find_package(Boost REQUIRED)
+   show_found_boost_details("static")
+ 
+   set(BOOST_STATIC_LIBS ${Boost_LIBRARIES})
++  foreach(_yb_b system thread atomic)
++    if(EXISTS "${YB_THIRDPARTY_INSTALLED_DEPS_DIR}/lib/libboost_${_yb_b}.a")
++      list(APPEND BOOST_STATIC_LIBS "${YB_THIRDPARTY_INSTALLED_DEPS_DIR}/lib/libboost_${_yb_b}.a")
++    endif()
++  endforeach()
+   list(LENGTH BOOST_STATIC_LIBS BOOST_STATIC_LIBS_LEN)
+   list(SORT BOOST_STATIC_LIBS)
+ 
+   # Find Boost shared libraries.
+   set(Boost_USE_STATIC_LIBS OFF)
+-  find_package(Boost COMPONENTS system thread atomic REQUIRED)
++  find_package(Boost REQUIRED)
+   show_found_boost_details("shared")
+   set(BOOST_SHARED_LIBS ${Boost_LIBRARIES})
++  foreach(_yb_b system thread atomic)
++    if(EXISTS "${YB_THIRDPARTY_INSTALLED_DEPS_DIR}/lib/libboost_${_yb_b}.so")
++      list(APPEND BOOST_SHARED_LIBS "${YB_THIRDPARTY_INSTALLED_DEPS_DIR}/lib/libboost_${_yb_b}.so")
++    endif()
++  endforeach()
+   list(LENGTH BOOST_SHARED_LIBS BOOST_SHARED_LIBS_LEN)
+   list(SORT BOOST_SHARED_LIBS)
+ 

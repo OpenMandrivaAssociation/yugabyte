@@ -138,18 +138,22 @@ for lib in thread atomic program_options regex date_time; do
 	[ -e "$libdir/libboost_${lib}.a" ] && \
 		ln -sfn "$libdir/libboost_${lib}.a" "$dest/lib/libboost_${lib}.a"
 done
-if [ ! -e "$dest/lib/libboost_system.so" ]; then
-	# Tiny empty PIC objects so FindBoost COMPONENTS system succeeds.
-	cc=${CC:-clang}
-	stub=$dest/lib/.boost_system_stub.c
-	printf '%s\n' 'void yb_boost_system_stub(void) {}' > "$stub"
-	"$cc" -fPIC -c "$stub" -o "$dest/lib/.boost_system_stub.o"
-	"$cc" -shared -o "$dest/lib/libboost_system.so" "$dest/lib/.boost_system_stub.o"
-	if command -v ar >/dev/null; then
-		ar rcs "$dest/lib/libboost_system.a" "$dest/lib/.boost_system_stub.o"
+# Boost 1.69+ system is header-only; 1.92 thread/atomic still ship libs
+# but CMake's FindBoost table does not know 1.92. Plant stubs for any
+# missing name so both static and shared lookups succeed.
+cc=${CC:-clang}
+for lib in system thread atomic; do
+	if [ ! -e "$dest/lib/libboost_${lib}.so" ]; then
+		stub=$dest/lib/.boost_${lib}_stub.c
+		printf '%s\n' "void yb_boost_${lib}_stub(void) {}" > "$stub"
+		"$cc" -fPIC -c "$stub" -o "$dest/lib/.boost_${lib}_stub.o"
+		"$cc" -shared -o "$dest/lib/libboost_${lib}.so" "$dest/lib/.boost_${lib}_stub.o"
+		if command -v ar >/dev/null && [ ! -e "$dest/lib/libboost_${lib}.a" ]; then
+			ar rcs "$dest/lib/libboost_${lib}.a" "$dest/lib/.boost_${lib}_stub.o"
+		fi
+		rm -f "$stub" "$dest/lib/.boost_${lib}_stub.o"
 	fi
-	rm -f "$stub" "$dest/lib/.boost_system_stub.o"
-fi
+done
 
 # snappy — yugabyte/snappy 1.1.9-yb-3 only turns DISALLOW_COPY_AND_ASSIGN
 # into `= delete`. Distro snappy is 1.2.2 (newer than both).
