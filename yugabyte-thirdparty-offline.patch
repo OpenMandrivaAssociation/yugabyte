@@ -69,6 +69,36 @@
              return ['-mcrc32']
          return []
  
+--- a/python/build_definitions/glog.py
++++ b/python/build_definitions/glog.py
+@@ -29,7 +29,8 @@
+         self.patch_version = 1
+         self.patch_strip = 0
+         self.patches = ['glog-tsan-annotations.patch',
+-                        'glog-symbolize-and-demangle.patch']
++                        'glog-symbolize-and-demangle.patch',
++                        'glog-cxx23-aligned-storage.patch']
+         self.post_patch = ['autoreconf', '-fvi']
+ 
+     def get_additional_cmake_args(self, builder: BuilderInterface) -> List[str]:
+--- /dev/null
++++ b/patches/glog-cxx23-aligned-storage.patch
+@@ -0,0 +1,13 @@
++std::aligned_storage was removed in C++23. Thirdparty builds glog as C++23.
++
++--- src/logging.cc
+++++ src/logging.cc
++@@ -1199,8 +1199,8 @@
++ 
++ #ifdef HAVE_ALIGNED_STORAGE
++ static GLOG_THREAD_LOCAL_STORAGE
++-    std::aligned_storage<sizeof(LogMessage::LogMessageData),
++-                         alignof(LogMessage::LogMessageData)>::type thread_msg_data;
+++    alignas(LogMessage::LogMessageData)
+++    char thread_msg_data[sizeof(LogMessage::LogMessageData)];
++ #else
++ static GLOG_THREAD_LOCAL_STORAGE
++     char thread_msg_data[sizeof(void*) + sizeof(LogMessage::LogMessageData)];
 --- a/python/build_definitions/gperftools.py	2026-06-10 15:03:35.000000000 +0200
 +++ b/python/build_definitions/gperftools.py	2026-08-17 01:22:30.118071747 +0200
 @@ -35,7 +35,12 @@
