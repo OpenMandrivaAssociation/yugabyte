@@ -62,6 +62,9 @@ Source19:	https://pypi.io/packages/source/a/autorepr/autorepr-0.3.0.tar.gz
 Source20:	bazel-5.3.1-linux-x86_64
 # cargo vendor of aws/clock-bound (ABF has no crates.io).
 Source21:	clockbound-vendor.tar.xz
+# DuckDB's httpfs extension is not in the DuckDB tarball. CMake would
+# git-clone it; ABF has no network. Pinned by thirdparty duckdb.py.
+Source22:	duckdb-httpfs-9c7d34977b10346d0b4cbbde5df807d1dab0b2bf.tar.gz
 
 Patch0:		yugabyte-offline-system-compiler.patch
 Patch1:		yugabyte-thirdparty-offline.patch
@@ -222,8 +225,27 @@ new = """        if not is_libcxx and not is_libcxxabi and not is_libcxx_with_ab
 """
 if old not in t:
     raise SystemExit("libc++ flag block not found")
-p.write_text(t.replace(old, new, 1))
+t = t.replace(old, new, 1)
+p.write_text(t)
+d = Path("python/build_definitions/duckdb.py")
+dt = d.read_text()
+git = """duckdb_extension_load(httpfs
+    GIT_URL https://github.com/duckdb/duckdb-httpfs
+    GIT_TAG 9c7d34977b10346d0b4cbbde5df807d1dab0b2bf
+    APPLY_PATCHES
+)"""
+local = """duckdb_extension_load(httpfs
+    SOURCE_DIR $ENV{YB_HTTPFS_SRC}
+)"""
+if git not in dt:
+    raise SystemExit("httpfs git pin not found")
+d.write_text(dt.replace(git, local, 1))
 PY
+# Vendored httpfs. See Source22. Patched here so CMake does not git-clone.
+cd %{_builddir}
+tar -xf %{SOURCE22}
+patch -d duckdb-httpfs-9c7d34977b10346d0b4cbbde5df807d1dab0b2bf -p1 \
+	< yugabyte-db-thirdparty-%{thirdparty_commit}/patches/duckdb-httpfs-cachedfile-gethandle-out-of-line.patch
 
 cd %{_builddir}
 tar -xf %{SOURCE2}
@@ -269,6 +291,7 @@ cp -a autorepr-0.3.0/autorepr.py yb-python-vendor/
 cd %{_builddir}/yugabyte-db-%{version}
 
 %build
+export YB_HTTPFS_SRC=%{_builddir}/duckdb-httpfs-9c7d34977b10346d0b4cbbde5df807d1dab0b2bf
 # Keep every "download this from GitHub" switch off, and keep /opt/yb-build
 # out of the picture. The patches honor these.
 export YB_USE_SYSTEM_COMPILER=1

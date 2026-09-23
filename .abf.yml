@@ -11,3 +11,4 @@ sources:
   yugabyte-db-thirdparty-c46477f4918c4c226395d9afc1f02900234f80de.tar.gz: fc959479e4c1341b01febda888a2bd2d361fde7a
   yugabyte-offline-deps-2026.1.2.0.tar.xz: b6b92340870f4454244832d3bc4fb33464c90085
   clockbound-vendor.tar.xz: 70b3e6ce0812d9174e90a41164b676965d289f96
+  duckdb-httpfs-9c7d34977b10346d0b4cbbde5df807d1dab0b2bf.tar.gz: 829383fde1e7aadc2970d8cbc3f275f6d5dbf8bf
