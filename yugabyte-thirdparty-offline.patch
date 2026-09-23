@@ -120,9 +120,9 @@
          self.toolchain = ensure_toolchains_installed(
                  self.download_manager, [self.args.toolchain])[0]
  
-@@ -881,12 +882,17 @@
-             # doesn't work on macOS builds when Xcode is installed.
-             build_command += ["--action_env", f"BAZEL_USE_CPP_ONLY_TOOLCHAIN=1"]
+@@ -868,12 +869,17 @@
+         # doesn't work on macOS builds when Xcode is installed.
+         build_command += ["--action_env", f"BAZEL_USE_CPP_ONLY_TOOLCHAIN=1"]
          build_command += ["--cxxopt", cxx_std_flag]
 +        # Target BUILD files pass -Werror after BAZEL_CXXOPTS. New clang
 +        # diagnostics then fail the 2024 abseil/tcmalloc forks.
