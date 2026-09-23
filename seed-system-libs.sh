@@ -123,7 +123,11 @@ if [ -d /usr/include/openssl ]; then
 fi
 link_so libssl.so
 link_so libcrypto.so
-if cmd=$(command -v openssl); then
+# Prefer the real binary. command -v can miss it when the third-party
+# prefix is already on PATH and only contains a dangling symlink.
+if [ -x /usr/bin/openssl ]; then
+	ln -sfn /usr/bin/openssl "$dest/bin/openssl"
+elif cmd=$(command -v openssl); then
 	ln -sfn "$cmd" "$dest/bin/openssl"
 fi
 

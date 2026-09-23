@@ -150,6 +150,8 @@ BuildRequires:	pkgconfig(libedit)
 BuildRequires:	pkgconfig(libcurl)
 BuildRequires:	pkgconfig(libxml-2.0)
 BuildRequires:	pkgconfig(libssl)
+# generate_test_certificates.sh runs thirdparty bin/openssl.
+BuildRequires:	openssl
 BuildRequires:	pkgconfig(snappy)
 BuildRequires:	pkgconfig(icu-uc)
 BuildRequires:	pkgconfig(icu-i18n)
