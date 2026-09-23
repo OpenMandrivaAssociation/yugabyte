@@ -77,6 +77,8 @@ Patch7:		yugabyte-boost-empty.patch
 Patch8:		yugabyte-flex-include.patch
 # gperftools 2.15 has no MallocExtension profile sampling methods.
 Patch9:		yugabyte-gperftools-sampling.patch
+# Graviton -march SIGILLs the build host when it runs protoc plugins.
+Patch10:	yugabyte-aarch64-baseline.patch
 
 # Upstream only supports x86_64 and aarch64 (CMakeLists fatals otherwise).
 ExclusiveArch:	%{x86_64} aarch64
@@ -216,6 +218,7 @@ Then connect with:
 %patch -P 7 -p1
 %patch -P 8 -p1
 %patch -P 9 -p1
+%patch -P 10 -p1
 
 cd %{_builddir}
 tar -xf %{SOURCE1}
