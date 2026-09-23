@@ -167,8 +167,8 @@ BuildRequires:	pkgconfig(libkeyutils)
 BuildRequires:	pkgconfig(libverto)
 BuildRequires:	pkgconfig(libpcre2-8)
 # The postgres link line asks for libpcre2-8.a.
-BuildRequires:	lib64pcre2-static-devel
-BuildRequires:	lib64aio-devel
+BuildRequires:	%{mklibname pcre2 -s -d}
+BuildRequires:	%{mklibname aio -d}
 BuildRequires:	pkgconfig(libhwy)
 BuildRequires:	pkgconfig(libunwind)
 # No .pc; Yugabyte only needs backtrace.h + libbacktrace.so.
