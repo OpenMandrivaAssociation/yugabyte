@@ -1,0 +1,24 @@
+CMake's FindICU sets ICU_<comp>_LIBRARY. This file reads
+ICU_<comp>_LIBRARIES, which stays NOTFOUND.
+
+--- a/cmake_modules/YugabyteFindThirdParty.cmake
++++ b/cmake_modules/YugabyteFindThirdParty.cmake
+@@ -367,6 +367,18 @@ function(yb_find_third_party_dependencies)
+   include_directories(SYSTEM ${Boost_INCLUDE_DIR})
+ 
+   find_package(ICU COMPONENTS i18n uc REQUIRED)
++  if(NOT ICU_I18N_LIBRARIES OR "${ICU_I18N_LIBRARIES}" MATCHES "NOTFOUND")
++    if(ICU_I18N_LIBRARY AND NOT "${ICU_I18N_LIBRARY}" MATCHES "NOTFOUND")
++      set(ICU_I18N_LIBRARIES "${ICU_I18N_LIBRARY}")
++    else()
++      find_library(YB_ICUI18N icui18n REQUIRED)
++      set(ICU_I18N_LIBRARIES "${YB_ICUI18N}")
++    endif()
++  endif()
++  if(NOT ICU_UC_LIBRARIES OR "${ICU_UC_LIBRARIES}" MATCHES "NOTFOUND")
++    find_library(YB_ICUUC icuuc REQUIRED)
++    set(ICU_UC_LIBRARIES "${YB_ICUUC}")
++  endif()
+   include_directories(SYSTEM ${ICU_INCLUDE_DIRS})
+   ADD_THIRDPARTY_LIB(icui18n
+     STATIC_LIB "${ICU_I18N_LIBRARIES}"
