@@ -119,6 +119,8 @@ BuildRequires:	slibtool
 BuildRequires:	libtool-base
 BuildRequires:	bison
 BuildRequires:	flex
+# Postgres is configured with --enable-nls and errors out without msgfmt.
+BuildRequires:	gettext
 BuildRequires:	patchelf
 BuildRequires:	pkgconfig(ncurses)
 BuildRequires:	pkgconfig(protobuf)
