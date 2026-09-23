@@ -121,6 +121,8 @@ BuildRequires:	slibtool
 BuildRequires:	libtool-base
 BuildRequires:	bison
 BuildRequires:	flex
+# FlexLexer.h is not in the flex package.
+BuildRequires:	flex-devel
 # Postgres is configured with --enable-nls and errors out without msgfmt.
 BuildRequires:	gettext
 BuildRequires:	patchelf
@@ -164,6 +166,8 @@ BuildRequires:	pkgconfig(uuid)
 BuildRequires:	pkgconfig(libkeyutils)
 BuildRequires:	pkgconfig(libverto)
 BuildRequires:	pkgconfig(libpcre2-8)
+# The postgres link line asks for libpcre2-8.a.
+BuildRequires:	lib64pcre2-static-devel
 BuildRequires:	lib64aio-devel
 BuildRequires:	pkgconfig(libhwy)
 BuildRequires:	pkgconfig(libunwind)
