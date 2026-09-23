@@ -201,6 +201,29 @@ cd %{_builddir}
 tar -xf %{SOURCE1}
 cd yugabyte-db-thirdparty-%{thirdparty_commit}
 %patch -P 1 -p1
+# System protobuf is libstdc++. Forcing libc++ breaks that link.
+python3 - <<'PY'
+from pathlib import Path
+p = Path("python/yugabyte_db_thirdparty/builder.py")
+t = p.read_text()
+old = """        if not is_libcxx and not is_libcxxabi and not is_libcxx_with_abi:
+            log("Adding special compiler/linker flags for Clang 10+ for dependencies other than "
+                "libc++")
+            self.ld_flags += ['-stdlib=libc++', '-lc++', '-lc++abi']
+            # TODO(asrivastava): We might not need libc++ in cxxflags but removing it causes certain
+            # builds to fail.
+            self.cxx_flags += ['-stdlib=libc++', '-nostdinc++']
+            self.preprocessor_flags.extend(['-isystem', libcxx_installed_include])
+            self.prepend_lib_dir_and_rpath(libcxx_installed_lib)
+"""
+new = """        if not is_libcxx and not is_libcxxabi and not is_libcxx_with_abi:
+            # System libstdc++ matches protobuf. Do not force libc++.
+            pass
+"""
+if old not in t:
+    raise SystemExit("libc++ flag block not found")
+p.write_text(t.replace(old, new, 1))
+PY
 
 cd %{_builddir}
 tar -xf %{SOURCE2}
