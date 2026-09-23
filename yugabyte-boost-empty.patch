@@ -1,0 +1,19 @@
+--- a/cmake_modules/YugabyteFindThirdParty.cmake	2026-09-23 20:04:52.487337214 +0200
++++ b/cmake_modules/YugabyteFindThirdParty.cmake
+@@ -363,6 +363,8 @@
+   endif()
+ 
+   # Add each pair of static/shared libraries.
++  # An empty list makes LAST_IDX -1, and list(GET) then yields NOTFOUND.
++  if(BOOST_STATIC_LIBS_LEN GREATER 0)
+   math(EXPR LAST_IDX "${BOOST_STATIC_LIBS_LEN} - 1")
+   foreach(IDX RANGE ${LAST_IDX})
+     list(GET BOOST_STATIC_LIBS ${IDX} BOOST_STATIC_LIB)
+@@ -380,6 +382,7 @@
+       SHARED_LIB "${BOOST_SHARED_LIB}")
+     list(APPEND YB_BASE_LIBS ${LIB_NAME_NO_PREFIX_SUFFIX})
+   endforeach()
++  endif()
+   include_directories(SYSTEM ${Boost_INCLUDE_DIR})
+ 
+   find_package(ICU COMPONENTS i18n uc REQUIRED)
