@@ -1,0 +1,52 @@
+--- a/src/yb/util/tcmalloc_util.cc
++++ b/src/yb/util/tcmalloc_util.cc
+@@ -24,6 +24,9 @@
+ 
+ #if YB_GPERFTOOLS_TCMALLOC
+ #include <gperftools/heap-profiler.h>
++// gperftools 2.15 has no MallocExtension::{Get,Set}ProfileSamplingRate.
++// The live period is this gflag, defined inside libtcmalloc.
++DECLARE_int64(tcmalloc_sample_parameter);
+ #endif
+ 
+ using yb::operator""_MB;
+@@ -256,7 +259,7 @@
+ #if YB_GOOGLE_TCMALLOC
+   return tcmalloc::MallocExtension::GetProfileSamplingRate();
+ #elif YB_GPERFTOOLS_TCMALLOC
+-  return MallocExtension::instance()->GetProfileSamplingRate();
++  return FLAGS_tcmalloc_sample_parameter;
+ #endif
+   return 0;
+ }
+@@ -268,7 +271,7 @@
+ #if YB_GOOGLE_TCMALLOC
+   tcmalloc::MallocExtension::SetProfileSamplingRate(sample_period_bytes);
+ #elif YB_GPERFTOOLS_TCMALLOC
+-  MallocExtension::instance()->SetProfileSamplingRate(sample_period_bytes);
++  FLAGS_tcmalloc_sample_parameter = sample_period_bytes;
+ #endif
+ }
+ 
+--- a/src/yb/util/tcmalloc_profile-test.cc
++++ b/src/yb/util/tcmalloc_profile-test.cc
+@@ -12,6 +12,10 @@
+ 
+ #include "yb/util/tcmalloc_profile-test.h"
+ 
++#if YB_GPERFTOOLS_TCMALLOC
++DECLARE_int64(tcmalloc_sample_parameter);
++#endif
++
+ #include <chrono>
+ #include <memory>
+ #include <string>
+@@ -56,7 +60,7 @@
+ void SamplingProfilerTest::SetProfileSamplingRate(int64_t sample_period_bytes) {
+   int64_t old_rate;
+ #if YB_GPERFTOOLS_TCMALLOC
+-  old_rate = MallocExtension::instance()->GetProfileSamplingRate();
++  old_rate = FLAGS_tcmalloc_sample_parameter;
+   if (old_rate == 0) {
+     old_rate = 16_MB;
+   }
