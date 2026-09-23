@@ -74,6 +74,7 @@ Patch4:		yugabyte-protobuf32.patch
 Patch5:		yugabyte-boost-1.92.patch
 Patch6:		yugabyte-icu-cmake.patch
 Patch7:		yugabyte-boost-empty.patch
+Patch8:		yugabyte-flex-include.patch
 
 # Upstream only supports x86_64 and aarch64 (CMakeLists fatals otherwise).
 ExclusiveArch:	%{x86_64} aarch64
@@ -203,6 +204,7 @@ Then connect with:
 %patch -P 5 -p1
 %patch -P 6 -p1
 %patch -P 7 -p1
+%patch -P 8 -p1
 
 cd %{_builddir}
 tar -xf %{SOURCE1}
