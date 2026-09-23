@@ -1,31 +1,52 @@
 --- a/src/yb/util/tcmalloc_util.cc
 +++ b/src/yb/util/tcmalloc_util.cc
-@@ -24,6 +24,10 @@
+@@ -24,6 +24,28 @@
  
  #if YB_GPERFTOOLS_TCMALLOC
  #include <gperftools/heap-profiler.h>
-+// gperftools 2.15 keeps the period in this gflag, exported with the
-+// pre-fLI64 gflags mangling. Yugabyte's DECLARE_int64 does not match it.
-+extern int64_t yb_gperftools_sample_parameter __asm__(
-+    "_ZN61FLAG__namespace_do_not_use_directly_use_DECLARE_int64_instead31FLAGS_tcmalloc_sample_parameterE");
++#include <dlfcn.h>
++
++// gperftools 2.15 keeps the period in this gflag. It is exported with the
++// pre-fLI64 gflags mangling, and libyb_util.so does not itself link
++// libtcmalloc, so a direct reference is unresolved when yb-tserver starts.
++int64_t* GperftoolsSampleParameter() {
++  static int64_t* slot = nullptr;
++  static bool looked_up = false;
++  if (!looked_up) {
++    looked_up = true;
++    void* handle = dlopen("libtcmalloc.so.4", RTLD_LAZY | RTLD_NOLOAD);
++    if (!handle) {
++      handle = dlopen("libtcmalloc.so.4", RTLD_LAZY | RTLD_GLOBAL);
++    }
++    if (handle) {
++      slot = static_cast<int64_t*>(dlsym(
++          handle,
++          "_ZN61FLAG__namespace_do_not_use_directly_use_DECLARE_int64_instead31FLAGS_tcmalloc_sample_parameterE"));
++    }
++  }
++  return slot;
++}
  #endif
  
  using yb::operator""_MB;
-@@ -256,7 +260,7 @@
+@@ -256,7 +278,8 @@
  #if YB_GOOGLE_TCMALLOC
    return tcmalloc::MallocExtension::GetProfileSamplingRate();
  #elif YB_GPERFTOOLS_TCMALLOC
 -  return MallocExtension::instance()->GetProfileSamplingRate();
-+  return yb_gperftools_sample_parameter;
++  int64_t* slot = GperftoolsSampleParameter();
++  return slot ? *slot : 0;
  #endif
    return 0;
  }
-@@ -268,7 +272,7 @@
+@@ -268,7 +291,9 @@
  #if YB_GOOGLE_TCMALLOC
    tcmalloc::MallocExtension::SetProfileSamplingRate(sample_period_bytes);
  #elif YB_GPERFTOOLS_TCMALLOC
 -  MallocExtension::instance()->SetProfileSamplingRate(sample_period_bytes);
-+  yb_gperftools_sample_parameter = sample_period_bytes;
++  if (int64_t* slot = GperftoolsSampleParameter()) {
++    *slot = sample_period_bytes;
++  }
  #endif
  }
  
