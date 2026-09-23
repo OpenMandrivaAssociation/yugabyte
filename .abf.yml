@@ -1,5 +1,4 @@
 sources:
-  yugabyte-db-thirdparty-e42841c02e3e540840ba44ae23cd2adc3c2c245d.tar.gz: acc78da3e2e39fbc1cd8563799af411b13836793
   yugabyte-bash-common-74793a6e1712ac45dc07cd430da303c95d37f584.tar.gz: 0202e8e00f99428ccdec3eba41d00f8bbafa5652
   sys_detection-1.3.4.tar.gz: 7c8858a65a8c8343ced423f4e4ca8b66cf5ad088
   compiler-identification-1.0.3.tar.gz: 14b232b84dc651102de003d11da40681b6ee0cff
@@ -8,6 +7,7 @@ sources:
   overrides-7.7.0.tar.gz: 38963631d7e82cb4e227843a236ad658ba30e50f
   autorepr-0.3.0.tar.gz: 6b40dddc039656fe32960229985b18b58f39bc10
   bazel-5.3.1-linux-x86_64: 60faa9791cdbd5e35b882b8d4b07977ef9a488ee
-  clockbound-vendor.tar.xz: 390de81a49b7bf8341a43e0f1d652c60b84ea2a1
-  yugabyte-db-2026.1.1.2.tar.gz: 735eac18b4d01d91bcc5778a7154cc9f5ba1d97c
-  yugabyte-offline-deps-2026.1.1.2.tar.xz: cc89be591102d9a62dcd22feae4fae29b788d6a7
+  yugabyte-db-2026.1.2.0.tar.gz: a80cec6d2fb531f3fabbb30918b30df76c65d7f9
+  yugabyte-db-thirdparty-c46477f4918c4c226395d9afc1f02900234f80de.tar.gz: fc959479e4c1341b01febda888a2bd2d361fde7a
+  yugabyte-offline-deps-2026.1.2.0.tar.xz: b6b92340870f4454244832d3bc4fb33464c90085
+  clockbound-vendor.tar.xz: 70b3e6ce0812d9174e90a41164b676965d289f96

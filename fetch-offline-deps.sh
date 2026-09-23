@@ -9,10 +9,10 @@
 
 set -euo pipefail
 
-VERSION=2026.1.1.2
-# Pinned by v2026.1.1.2 build-support/thirdparty_archives.yml
-THIRDPARTY_COMMIT=e42841c02e3e540840ba44ae23cd2adc3c2c245d
-# Pinned by v2026.1.1.2 build-support/yugabyte-bash-common-sha1.txt
+VERSION=2026.1.2.0
+# Pinned by v2026.1.2.0 build-support/thirdparty_archives.yml
+THIRDPARTY_COMMIT=c46477f4918c4c226395d9afc1f02900234f80de
+# Pinned by v2026.1.2.0 build-support/yugabyte-bash-common-sha1.txt
 BASHCOMMON_COMMIT=74793a6e1712ac45dc07cd430da303c95d37f584
 
 WORKDIR=$(pwd)
@@ -71,6 +71,13 @@ tar -C "$STAGING" -xf "$WORKDIR/compiler-identification-1.0.3.tar.gz"
 cp -a "$STAGING"/compiler-identification-*/src/compiler_identification "$STAGING/vendor/"
 tar -C "$STAGING" -xf "$WORKDIR/argparse_utils-1.3.0.tar.gz"
 cp -a "$STAGING"/argparse_utils-*/argparse_utils "$STAGING/vendor/"
+# sys_detection imports autorepr; thirdparty imports overrides and yugabyte_pycommon.
+tar -C "$STAGING" -xf "$WORKDIR/autorepr-0.3.0.tar.gz"
+cp -a "$STAGING"/autorepr-*/autorepr.py "$STAGING/vendor/"
+tar -C "$STAGING" -xf "$WORKDIR/overrides-7.7.0.tar.gz"
+cp -a "$STAGING"/overrides-*/overrides "$STAGING/vendor/"
+tar -C "$STAGING" -xf "$WORKDIR/yugabyte_pycommon-1.9.15.tar.gz"
+cp -a "$STAGING"/yugabyte_pycommon-*/yugabyte_pycommon "$STAGING/vendor/"
 export YB_USE_SYSTEM_PYTHON=1
 export PYTHONPATH="$STAGING/vendor${PYTHONPATH:+:$PYTHONPATH}"
 
@@ -95,12 +102,16 @@ x86_64) tp_skip_diskann=diskann ;;
 esac
 (
 	cd "$tp"
+	# New thirdparty refuses to start without an expected Clang major.
+	# Download selection follows the compiler on this machine.
+	clang_major=$(clang -dumpversion | cut -d. -f1)
 	./build_thirdparty.sh \
 		--download-extract-only \
 		--skip-sanitizers \
-		--skip llvm_libunwind,llvm_libcxx_with_abi,flex,bison,zlib,lz4,eigen,libedit,boost,curl,libxml2,openssl,openssl_fips,snappy,icu4c,libuv,krb5,openldap,libuuid,libkeyutils,libverto,libaio,pcre,hwy,gperftools${tp_skip_diskann:+,$tp_skip_diskann} \
+		--skip llvm_libunwind,llvm_libcxx_with_abi,flex,bison,zlib,lz4,eigen,libedit,boost,curl,libxml2,openssl,openssl_fips,snappy,icu4c,libuv,krb5,openldap,libuuid,libkeyutils,libverto,libaio,pcre,hwy,gperftools,iwyu${tp_skip_diskann:+,$tp_skip_diskann} \
 		--compiler-family=clang \
-		--compiler-prefix=/usr
+		--compiler-prefix=/usr \
+		--expected-major-compiler-version="$clang_major"
 )
 
 # Remember archives for the next harvest attempt.

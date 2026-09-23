@@ -19,7 +19,7 @@
 # and `abb store` the resulting archives before kicking off a build.
 
 Name:		yugabyte
-Version:	2026.1.1.2
+Version:	2026.1.2.0
 Release:	1
 Summary:	PostgreSQL-compatible distributed SQL database
 Group:		Databases
@@ -31,10 +31,10 @@ URL:		https://www.yugabyte.com/
 #   https://github.com/yugabyte/yugabyte-db-thirdparty/archive/<commit>.tar.gz
 #   https://github.com/yugabyte/yugabyte-bash-common/archive/<commit>.tar.gz
 Source0:	yugabyte-db-%{version}.tar.gz
-# Pinned by v2026.1.1.2 build-support/thirdparty_archives.yml
-%define thirdparty_commit e42841c02e3e540840ba44ae23cd2adc3c2c245d
+# Pinned by v2026.1.2.0 build-support/thirdparty_archives.yml
+%define thirdparty_commit c46477f4918c4c226395d9afc1f02900234f80de
 Source1:	yugabyte-db-thirdparty-%{thirdparty_commit}.tar.gz
-# Pinned by v2026.1.1.2 build-support/yugabyte-bash-common-sha1.txt
+# Pinned by v2026.1.2.0 build-support/yugabyte-bash-common-sha1.txt
 %define bashcommon_commit 74793a6e1712ac45dc07cd430da303c95d37f584
 Source2:	yugabyte-bash-common-%{bashcommon_commit}.tar.gz
 # Third-party C/C++ source archives (same script). No Python wheels.
@@ -300,13 +300,16 @@ sh %{SOURCE13} installed/common %{_libdir}
 sh %{SOURCE13} installed/uninstrumented %{_libdir}
 # diskann is only registered on x86_64; --skip of an unknown name fails.
 # Clang never registers bundled patchelf (GCC-only).
-tp_skip=llvm_libunwind,llvm_libcxx_with_abi,flex,bison,zlib,lz4,eigen,libedit,boost,curl,libxml2,openssl,openssl_fips,snappy,icu4c,libuv,krb5,openldap,libuuid,libkeyutils,libverto,libaio,pcre,hwy,libbacktrace,hiredis,redis_cli,ncurses,protobuf,abseil,tcmalloc,gperftools
+tp_skip=llvm_libunwind,llvm_libcxx_with_abi,flex,bison,zlib,lz4,eigen,libedit,boost,curl,libxml2,openssl,openssl_fips,snappy,icu4c,libuv,krb5,openldap,libuuid,libkeyutils,libverto,libaio,pcre,hwy,libbacktrace,hiredis,redis_cli,ncurses,protobuf,abseil,tcmalloc,gperftools,iwyu
 case $(uname -m) in
 x86_64) tp_skip=$tp_skip,diskann ;;
 esac
+# Thirdparty now requires an expected Clang major before it will start.
+clang_major=$(clang -dumpversion | cut -d. -f1)
 ./build_thirdparty.sh \
 	--compiler-family=clang \
 	--compiler-prefix=/usr \
+	--expected-major-compiler-version="$clang_major" \
 	--skip-sanitizers \
 	--skip "$tp_skip" \
 	--skip-library-checking \
