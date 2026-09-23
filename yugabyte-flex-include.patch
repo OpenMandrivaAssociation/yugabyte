@@ -3,12 +3,13 @@ the only search root. Flex itself is the system one.
 
 --- a/src/yb/yql/cql/ql/parser/CMakeLists.txt
 +++ b/src/yb/yql/cql/ql/parser/CMakeLists.txt
-@@ -75,7 +75,7 @@
+@@ -75,7 +75,8 @@
              ${PARSER_GRAM_Y_CC_FINAL} ${PARSER_GRAM_Y_HH_FINAL}
              ${SCANNER_LEX_L_CC})
  
 -FIND_PATH(FLEX_INCLUDE_DIR FlexLexer.h)
-+FIND_PATH(FLEX_INCLUDE_DIR FlexLexer.h PATHS /usr/include)
++# The third-party prefix is the only find root, so FIND_PATH misses /usr/include.
++set(FLEX_INCLUDE_DIR /usr/include)
  target_include_directories(ql_parser PUBLIC ${FLEX_INCLUDE_DIR})
  target_link_libraries(ql_parser
                        ${FLEX_LIBRARIES}
