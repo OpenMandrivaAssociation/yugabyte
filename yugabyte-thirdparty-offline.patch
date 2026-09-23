@@ -83,19 +83,18 @@
      def get_additional_cmake_args(self, builder: BuilderInterface) -> List[str]:
 --- /dev/null
 +++ b/patches/glog-cxx23-aligned-storage.patch
-@@ -0,0 +1,13 @@
+@@ -0,0 +1,14 @@
 +std::aligned_storage was removed in C++23. Thirdparty builds glog as C++23.
 +
 +--- src/logging.cc
 ++++ src/logging.cc
-+@@ -1199,8 +1199,8 @@
++@@ -1199,8 +1199,7 @@
 + 
 + #ifdef HAVE_ALIGNED_STORAGE
 + static GLOG_THREAD_LOCAL_STORAGE
 +-    std::aligned_storage<sizeof(LogMessage::LogMessageData),
 +-                         alignof(LogMessage::LogMessageData)>::type thread_msg_data;
-++    alignas(LogMessage::LogMessageData)
-++    char thread_msg_data[sizeof(LogMessage::LogMessageData)];
+++    char thread_msg_data alignas(LogMessage::LogMessageData)[sizeof(LogMessage::LogMessageData)];
 + #else
 + static GLOG_THREAD_LOCAL_STORAGE
 +     char thread_msg_data[sizeof(void*) + sizeof(LogMessage::LogMessageData)];
