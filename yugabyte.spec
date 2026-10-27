@@ -20,7 +20,7 @@
 
 Name:		yugabyte
 Version:	2026.1.2.0
-Release:	1
+Release:	2
 Summary:	PostgreSQL-compatible distributed SQL database
 Group:		Databases
 License:	Apache-2.0
