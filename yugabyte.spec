@@ -168,7 +168,8 @@ BuildRequires:	pkgconfig(uuid)
 BuildRequires:	pkgconfig(libkeyutils)
 BuildRequires:	pkgconfig(libverto)
 BuildRequires:	pkgconfig(libpcre2-8)
-# The postgres link line asks for libpcre2-8.a.
+# Postgres executables link libpcre2-8.a. documentdb is a shared object
+# and cannot: the static archive is not PIC, so it links libpcre2-8.so.
 BuildRequires:	%{mklibname pcre2 -s -d}
 BuildRequires:	%{mklibname aio -d}
 BuildRequires:	pkgconfig(libhwy)

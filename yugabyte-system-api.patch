@@ -829,9 +829,10 @@
 @@ -17,7 +17,7 @@
  # YB: Replace libbson-static-1.0 and intelmathlib with yb thirdparty based bson and bid libs.
  PG_LDFLAGS = -lbson-1.0 $(YB_THIRDPARTY_DIR)/installed/uninstrumented/lib/libbid.a \
-                 $(YB_THIRDPARTY_DIR)/installed/uninstrumented/lib/libpcre2-8.a -L$(YB_BUILD_ROOT)/lib \
+-                $(YB_THIRDPARTY_DIR)/installed/uninstrumented/lib/libpcre2-8.a -L$(YB_BUILD_ROOT)/lib \
 -                -L/usr/lib -lyb_pggate -lyb_pggate_util
-+                -L/usr/lib64 -m64 -lyb_pggate -lyb_pggate_util
++                -L/usr/lib64 -lpcre2-8 -L$(YB_BUILD_ROOT)/lib \
++                -m64 -lyb_pggate -lyb_pggate_util
  PG_LDFLAGS += -Wl,-rpath=$(shell $(PG_CONFIG) --pkglibdir)
  
  ifeq ($(USE_DOCUMENTDB_CORE),1)
