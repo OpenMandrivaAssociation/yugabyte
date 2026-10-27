@@ -398,6 +398,21 @@ if [ -L "$otel_so" ] && [ ! -e "$otel_so" ]; then
 		cp -a "$real" "$otel_so"
 	fi
 fi
+# Some otel archives are installed only under lib64. CMake and the link
+# line search lib/. If lib is not already a symlink to lib64, mirror the
+# missing names. Do not replace a file that is already there.
+otel_lib=$YB_THIRDPARTY_DIR/installed/uninstrumented/lib
+otel_lib64=$YB_THIRDPARTY_DIR/installed/uninstrumented/lib64
+if [ -d "$otel_lib64" ] && [ ! -L "$otel_lib" ]; then
+	mkdir -p "$otel_lib"
+	for otel_arc in "$otel_lib64"/libopentelemetry_*; do
+		[ -e "$otel_arc" ] || continue
+		otel_base=$(basename "$otel_arc")
+		if [ ! -e "$otel_lib/$otel_base" ]; then
+			ln -s "../lib64/$otel_base" "$otel_lib/$otel_base"
+		fi
+	done
+fi
 export OPENSSL_ROOT_DIR=$YB_THIRDPARTY_DIR/installed/common
 export BOOST_ROOT=$YB_THIRDPARTY_DIR/installed/uninstrumented
 
