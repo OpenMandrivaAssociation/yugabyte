@@ -240,7 +240,7 @@ diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindLz4.cmake new/yugabyte-d
 diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindOtel.cmake new/yugabyte-db-2026.1.1.0/cmake_modules/FindOtel.cmake
 --- a/cmake_modules/FindOtel.cmake	2026-08-06 03:52:33.000000000 +0200
 +++ b/cmake_modules/FindOtel.cmake	2026-08-17 13:48:12.359461575 +0200
-@@ -41,6 +41,22 @@
+@@ -41,6 +41,26 @@
    NAMES opentelemetry_proto
    NO_CMAKE_SYSTEM_PATH
    NO_SYSTEM_ENVIRONMENT_PATH)
@@ -256,6 +256,10 @@ diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindOtel.cmake new/yugabyte-
 +  NAMES opentelemetry_otlp_recordable
 +  NO_CMAKE_SYSTEM_PATH
 +  NO_SYSTEM_ENVIRONMENT_PATH)
++find_library(OTEL_LOGS_SHARED_LIB
++  NAMES opentelemetry_logs
++  NO_CMAKE_SYSTEM_PATH
++  NO_SYSTEM_ENVIRONMENT_PATH)
 +find_library(OTEL_HTTP_CLIENT_CURL_SHARED_LIB
 +  NAMES opentelemetry_http_client_curl
 +  NO_CMAKE_SYSTEM_PATH
@@ -263,13 +267,14 @@ diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindOtel.cmake new/yugabyte-
  
  include(FindPackageHandleStandardArgs)
  find_package_handle_standard_args(OTEL REQUIRED_VARS
-@@ -48,5 +64,9 @@
+@@ -48,5 +68,10 @@
    OTEL_EXPORTER_OTLP_HTTP_SHARED_LIB
    OTEL_RESOURCES_SHARED_LIB
    OTEL_PROTO_SHARED_LIB
 +  OTEL_COMMON_SHARED_LIB
 +  OTEL_EXPORTER_OTLP_HTTP_CLIENT_SHARED_LIB
 +  OTEL_OTLP_RECORDABLE_SHARED_LIB
++  OTEL_LOGS_SHARED_LIB
 +  OTEL_HTTP_CLIENT_CURL_SHARED_LIB
    OTEL_INCLUDE_DIR
  )
@@ -362,7 +367,7 @@ diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/YugabyteFindThirdParty.cmake
    include_directories(SYSTEM ${CURL_INCLUDE_DIRS})
    ADD_THIRDPARTY_LIB(curl STATIC_LIB "${CURL_LIBRARIES}")
  
-@@ -434,6 +438,14 @@
+@@ -434,6 +438,16 @@
     SHARED_LIB "${OTEL_RESOURCES_SHARED_LIB}")
    ADD_THIRDPARTY_LIB(opentelemetry_proto
     SHARED_LIB "${OTEL_PROTO_SHARED_LIB}")
@@ -372,6 +377,8 @@ diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/YugabyteFindThirdParty.cmake
 +   SHARED_LIB "${OTEL_EXPORTER_OTLP_HTTP_CLIENT_SHARED_LIB}")
 +  ADD_THIRDPARTY_LIB(opentelemetry_otlp_recordable
 +   SHARED_LIB "${OTEL_OTLP_RECORDABLE_SHARED_LIB}")
++  ADD_THIRDPARTY_LIB(opentelemetry_logs
++   SHARED_LIB "${OTEL_LOGS_SHARED_LIB}")
 +  ADD_THIRDPARTY_LIB(opentelemetry_http_client_curl
 +   SHARED_LIB "${OTEL_HTTP_CLIENT_CURL_SHARED_LIB}")
  
@@ -624,11 +631,12 @@ diff -urN orig/yugabyte-db-2026.1.1.0/src/postgres/CMakeLists.txt new/yugabyte-d
 diff -urN orig/yugabyte-db-2026.1.1.0/src/yb/util/CMakeLists.txt new/yugabyte-db-2026.1.1.0/src/yb/util/CMakeLists.txt
 --- a/src/yb/util/CMakeLists.txt	2026-08-06 03:52:33.000000000 +0200
 +++ b/src/yb/util/CMakeLists.txt	2026-08-17 13:47:51.993235419 +0200
-@@ -258,7 +258,11 @@
+@@ -258,7 +258,12 @@
    opentelemetry_trace
    opentelemetry_exporter_otlp_http
 +  opentelemetry_exporter_otlp_http_client
 +  opentelemetry_otlp_recordable
++  opentelemetry_logs
 +  opentelemetry_http_client_curl
    opentelemetry_resources
 -  opentelemetry_proto)
