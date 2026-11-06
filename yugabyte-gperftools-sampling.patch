@@ -29,7 +29,7 @@
  #endif
  
  using yb::operator""_MB;
-@@ -256,7 +278,8 @@
+@@ -270,7 +292,8 @@
  #if YB_GOOGLE_TCMALLOC
    return tcmalloc::MallocExtension::GetProfileSamplingRate();
  #elif YB_GPERFTOOLS_TCMALLOC
@@ -39,7 +39,7 @@
  #endif
    return 0;
  }
-@@ -268,7 +291,9 @@
+@@ -282,7 +305,9 @@
  #if YB_GOOGLE_TCMALLOC
    tcmalloc::MallocExtension::SetProfileSamplingRate(sample_period_bytes);
  #elif YB_GPERFTOOLS_TCMALLOC

@@ -7,8 +7,8 @@ sources:
   overrides-7.7.0.tar.gz: 38963631d7e82cb4e227843a236ad658ba30e50f
   autorepr-0.3.0.tar.gz: 6b40dddc039656fe32960229985b18b58f39bc10
   bazel-5.3.1-linux-x86_64: 60faa9791cdbd5e35b882b8d4b07977ef9a488ee
-  yugabyte-db-2026.1.2.0.tar.gz: a80cec6d2fb531f3fabbb30918b30df76c65d7f9
-  yugabyte-db-thirdparty-c46477f4918c4c226395d9afc1f02900234f80de.tar.gz: fc959479e4c1341b01febda888a2bd2d361fde7a
-  yugabyte-offline-deps-2026.1.2.0.tar.xz: b6b92340870f4454244832d3bc4fb33464c90085
   clockbound-vendor.tar.xz: 70b3e6ce0812d9174e90a41164b676965d289f96
   duckdb-httpfs-9c7d34977b10346d0b4cbbde5df807d1dab0b2bf.tar.gz: 829383fde1e7aadc2970d8cbc3f275f6d5dbf8bf
+  yugabyte-db-2026.1.3.0.tar.gz: 41f40efcd56199d66c2edefecab6e3cfdde50816
+  yugabyte-db-thirdparty-16cc15cc1460904608d7e08b525eb871987ab6b4.tar.gz: 7052798a4206cdac8ecc2a2e27909ed870cebbdb
+  yugabyte-offline-deps-2026.1.3.0.tar.xz: 1f9c3a4dffd7425d1120c8dbaa534958bad1e52d

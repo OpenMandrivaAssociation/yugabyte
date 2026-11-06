@@ -1,6 +1,6 @@
---- a/cmake_modules/YugabyteFindThirdParty.cmake	2026-09-11 23:05:34.982082985 +0200
-+++ b/cmake_modules/YugabyteFindThirdParty.cmake	2026-09-11 23:05:35.899234808 +0200
-@@ -323,18 +323,30 @@
+--- a/cmake_modules/YugabyteFindThirdParty.cmake
++++ b/cmake_modules/YugabyteFindThirdParty.cmake
+@@ -327,18 +327,30 @@
  
    # Find Boost static libraries.
    set(Boost_USE_STATIC_LIBS ON)

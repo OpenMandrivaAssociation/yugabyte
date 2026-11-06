@@ -1,6 +1,5 @@
-diff -urN orig/yugabyte-db-2026.1.1.0/CMakeLists.txt new/yugabyte-db-2026.1.1.0/CMakeLists.txt
---- a/CMakeLists.txt	2026-08-06 03:52:33.000000000 +0200
-+++ b/CMakeLists.txt	2026-08-17 13:46:14.520552314 +0200
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
 @@ -60,7 +60,8 @@
  # We don't use modules, so no need to scan.
  set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
@@ -24,9 +23,8 @@ diff -urN orig/yugabyte-db-2026.1.1.0/CMakeLists.txt new/yugabyte-db-2026.1.1.0/
  
  # Flag to enable clang undefined behavior sanitizer
  # We explicitly don't enable all of the sanitizer flags:
-diff -urN orig/yugabyte-db-2026.1.1.0/build-support/common-build-env.sh new/yugabyte-db-2026.1.1.0/build-support/common-build-env.sh
---- a/build-support/common-build-env.sh	2026-08-06 03:52:33.000000000 +0200
-+++ b/build-support/common-build-env.sh	2026-08-17 13:47:51.992525650 +0200
+--- a/build-support/common-build-env.sh
++++ b/build-support/common-build-env.sh
 @@ -106,6 +106,17 @@
  }
  
@@ -68,7 +66,7 @@ diff -urN orig/yugabyte-db-2026.1.1.0/build-support/common-build-env.sh new/yuga
    expect_vars_to_be_set YB_COMPILER_TYPE YB_THIRDPARTY_DIR
    local toolchain_urls=()
    local linuxbrew_url=""
-@@ -2109,6 +2127,11 @@
+@@ -2136,6 +2154,11 @@
  }
  
  find_or_download_ysql_snapshots() {
@@ -80,7 +78,7 @@ diff -urN orig/yugabyte-db-2026.1.1.0/build-support/common-build-env.sh new/yuga
    local repo_url="https://github.com/yugabyte/yugabyte-db-ysql-catalog-snapshots"
    local prefix="initial_sys_catalog_snapshot"
  
-@@ -2389,6 +2412,11 @@
+@@ -2416,6 +2439,11 @@
    if [[ -n ${YB_VERBOSE:-} ]]; then
      log "Checking syntax of Python scripts"
    fi
@@ -92,9 +90,8 @@ diff -urN orig/yugabyte-db-2026.1.1.0/build-support/common-build-env.sh new/yuga
    pushd "$YB_SRC_ROOT"
    local IFS=$'\n'
    # Get all .py files in git, ignoring files with skip-worktree bit set (e.g.
-diff -urN orig/yugabyte-db-2026.1.1.0/build-support/fips_install.sh new/yugabyte-db-2026.1.1.0/build-support/fips_install.sh
---- a/build-support/fips_install.sh	2026-08-06 03:52:33.000000000 +0200
-+++ b/build-support/fips_install.sh	2026-08-17 13:47:51.992797573 +0200
+--- a/build-support/fips_install.sh
++++ b/build-support/fips_install.sh
 @@ -17,4 +17,12 @@
  export YB_BIN_DIR="$YB_THIRDPARTY_DIR/installed/common/bin"
  export YB_OSSL_PROVIDER_DIR="$YB_THIRDPARTY_DIR/installed/common/lib/ossl-modules"
@@ -108,9 +105,8 @@ diff -urN orig/yugabyte-db-2026.1.1.0/build-support/fips_install.sh new/yugabyte
 +fi
 +
  "$YB_SRC_ROOT/scripts/installation/bin/fips_install.sh" "$@"
-diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindAbseil.cmake new/yugabyte-db-2026.1.1.0/cmake_modules/FindAbseil.cmake
---- a/cmake_modules/FindAbseil.cmake	2026-08-06 03:52:33.000000000 +0200
-+++ b/cmake_modules/FindAbseil.cmake	2026-08-17 13:46:14.521623357 +0200
+--- a/cmake_modules/FindAbseil.cmake
++++ b/cmake_modules/FindAbseil.cmake
 @@ -19,6 +19,12 @@
    NO_CMAKE_SYSTEM_PATH
    NO_SYSTEM_ENVIRONMENT_PATH)
@@ -124,7 +120,6 @@ diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindAbseil.cmake new/yugabyt
  include(FindPackageHandleStandardArgs)
  find_package_handle_standard_args(ABSEIL REQUIRED_VARS
    ABSEIL_SHARED_LIB ABSEIL_STATIC_LIB)
-diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindGPerf.cmake new/yugabyte-db-2026.1.1.0/cmake_modules/FindGPerf.cmake
 --- a/cmake_modules/FindGPerf.cmake
 +++ b/cmake_modules/FindGPerf.cmake
 @@ -23,6 +23,12 @@
@@ -159,9 +154,8 @@ diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindGPerf.cmake new/yugabyte
  include(FindPackageHandleStandardArgs)
  find_package_handle_standard_args(GOOGLE_PERFTOOLS REQUIRED_VARS
    TCMALLOC_SHARED_LIB TCMALLOC_STATIC_LIB
-diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindHiredis.cmake new/yugabyte-db-2026.1.1.0/cmake_modules/FindHiredis.cmake
---- a/cmake_modules/FindHiredis.cmake	2026-08-06 03:52:33.000000000 +0200
-+++ b/cmake_modules/FindHiredis.cmake	2026-08-17 13:46:14.521491125 +0200
+--- a/cmake_modules/FindHiredis.cmake
++++ b/cmake_modules/FindHiredis.cmake
 @@ -20,6 +20,13 @@
    NO_CMAKE_SYSTEM_PATH
    NO_SYSTEM_ENVIRONMENT_PATH)
@@ -176,9 +170,8 @@ diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindHiredis.cmake new/yugaby
  include(FindPackageHandleStandardArgs)
  find_package_handle_standard_args(HIREDIS REQUIRED_VARS
    HIREDIS_STATIC_LIB HIREDIS_INCLUDE_DIR)
-diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindLibBacktrace.cmake new/yugabyte-db-2026.1.1.0/cmake_modules/FindLibBacktrace.cmake
---- a/cmake_modules/FindLibBacktrace.cmake	2026-08-06 03:52:33.000000000 +0200
-+++ b/cmake_modules/FindLibBacktrace.cmake	2026-08-17 13:46:14.521417824 +0200
+--- a/cmake_modules/FindLibBacktrace.cmake
++++ b/cmake_modules/FindLibBacktrace.cmake
 @@ -31,6 +31,11 @@
    NO_CMAKE_SYSTEM_PATH
    NO_SYSTEM_ENVIRONMENT_PATH)
@@ -191,9 +184,8 @@ diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindLibBacktrace.cmake new/y
  include(FindPackageHandleStandardArgs)
  find_package_handle_standard_args(LIBBACKTRACE REQUIRED_VARS
    LIBBACKTRACE_SHARED_LIB LIBBACKTRACE_STATIC_LIB LIBBACKTRACE_INCLUDE_DIR)
-diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindLibUuid.cmake new/yugabyte-db-2026.1.1.0/cmake_modules/FindLibUuid.cmake
---- a/cmake_modules/FindLibUuid.cmake	2026-08-06 03:52:33.000000000 +0200
-+++ b/cmake_modules/FindLibUuid.cmake	2026-08-17 13:46:14.521306393 +0200
+--- a/cmake_modules/FindLibUuid.cmake
++++ b/cmake_modules/FindLibUuid.cmake
 @@ -46,6 +46,11 @@
    NO_CMAKE_SYSTEM_PATH
    NO_SYSTEM_ENVIRONMENT_PATH)
@@ -206,9 +198,8 @@ diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindLibUuid.cmake new/yugaby
  include(FindPackageHandleStandardArgs)
  find_package_handle_standard_args(LIBUUID REQUIRED_VARS
    LIBUUID_SHARED_LIB LIBUUID_STATIC_LIB LIBUUID_INCLUDE_DIR)
-diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindLibUv.cmake new/yugabyte-db-2026.1.1.0/cmake_modules/FindLibUv.cmake
---- a/cmake_modules/FindLibUv.cmake	2026-08-06 03:52:33.000000000 +0200
-+++ b/cmake_modules/FindLibUv.cmake	2026-08-17 13:46:14.521168811 +0200
+--- a/cmake_modules/FindLibUv.cmake
++++ b/cmake_modules/FindLibUv.cmake
 @@ -31,6 +31,11 @@
    NO_CMAKE_SYSTEM_PATH
    NO_SYSTEM_ENVIRONMENT_PATH)
@@ -221,9 +212,8 @@ diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindLibUv.cmake new/yugabyte
  include(FindPackageHandleStandardArgs)
  find_package_handle_standard_args(LIBUV REQUIRED_VARS
    LIBUV_SHARED_LIB LIBUV_STATIC_LIB LIBUV_INCLUDE_DIR)
-diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindLz4.cmake new/yugabyte-db-2026.1.1.0/cmake_modules/FindLz4.cmake
---- a/cmake_modules/FindLz4.cmake	2026-08-06 03:52:33.000000000 +0200
-+++ b/cmake_modules/FindLz4.cmake	2026-08-17 13:46:14.520896428 +0200
+--- a/cmake_modules/FindLz4.cmake
++++ b/cmake_modules/FindLz4.cmake
 @@ -27,6 +27,12 @@
    NO_CMAKE_SYSTEM_PATH
    NO_SYSTEM_ENVIRONMENT_PATH)
@@ -237,9 +227,8 @@ diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindLz4.cmake new/yugabyte-d
  include(FindPackageHandleStandardArgs)
  find_package_handle_standard_args(LZ4 REQUIRED_VARS
    LZ4_STATIC_LIB LZ4_INCLUDE_DIR)
-diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindOtel.cmake new/yugabyte-db-2026.1.1.0/cmake_modules/FindOtel.cmake
---- a/cmake_modules/FindOtel.cmake	2026-08-06 03:52:33.000000000 +0200
-+++ b/cmake_modules/FindOtel.cmake	2026-08-17 13:48:12.359461575 +0200
+--- a/cmake_modules/FindOtel.cmake
++++ b/cmake_modules/FindOtel.cmake
 @@ -41,6 +41,26 @@
    NAMES opentelemetry_proto
    NO_CMAKE_SYSTEM_PATH
@@ -278,9 +267,8 @@ diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindOtel.cmake new/yugabyte-
 +  OTEL_HTTP_CLIENT_CURL_SHARED_LIB
    OTEL_INCLUDE_DIR
  )
-diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindPcre.cmake new/yugabyte-db-2026.1.1.0/cmake_modules/FindPcre.cmake
---- a/cmake_modules/FindPcre.cmake	2026-08-06 03:52:33.000000000 +0200
-+++ b/cmake_modules/FindPcre.cmake	2026-08-17 13:46:14.520969099 +0200
+--- a/cmake_modules/FindPcre.cmake
++++ b/cmake_modules/FindPcre.cmake
 @@ -22,6 +22,13 @@
    NO_CMAKE_SYSTEM_PATH
    NO_SYSTEM_ENVIRONMENT_PATH)
@@ -295,9 +283,8 @@ diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindPcre.cmake new/yugabyte-
  include(FindPackageHandleStandardArgs)
  find_package_handle_standard_args(PCRE REQUIRED_VARS
    PCRE_STATIC_LIB PCRE_INCLUDE_DIR)
-diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindProtobuf.cmake new/yugabyte-db-2026.1.1.0/cmake_modules/FindProtobuf.cmake
---- a/cmake_modules/FindProtobuf.cmake	2026-08-06 03:52:33.000000000 +0200
-+++ b/cmake_modules/FindProtobuf.cmake	2026-08-17 13:46:14.521772288 +0200
+--- a/cmake_modules/FindProtobuf.cmake
++++ b/cmake_modules/FindProtobuf.cmake
 @@ -219,6 +219,14 @@
               NO_CMAKE_SYSTEM_PATH
               NO_SYSTEM_ENVIRONMENT_PATH)
@@ -313,9 +300,8 @@ diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindProtobuf.cmake new/yugab
  include(FindPackageHandleStandardArgs)
  find_package_handle_standard_args(PROTOBUF REQUIRED_VARS
    PROTOBUF_SHARED_LIBRARY PROTOBUF_STATIC_LIBRARY
-diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindSnappy.cmake new/yugabyte-db-2026.1.1.0/cmake_modules/FindSnappy.cmake
---- a/cmake_modules/FindSnappy.cmake	2026-08-06 03:52:33.000000000 +0200
-+++ b/cmake_modules/FindSnappy.cmake	2026-08-17 13:46:14.521104170 +0200
+--- a/cmake_modules/FindSnappy.cmake
++++ b/cmake_modules/FindSnappy.cmake
 @@ -31,6 +31,11 @@
    NO_CMAKE_SYSTEM_PATH
    NO_SYSTEM_ENVIRONMENT_PATH)
@@ -328,9 +314,8 @@ diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindSnappy.cmake new/yugabyt
  include(FindPackageHandleStandardArgs)
  find_package_handle_standard_args(SNAPPY REQUIRED_VARS
    SNAPPY_SHARED_LIB SNAPPY_STATIC_LIB SNAPPY_INCLUDE_DIR)
-diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindZlib.cmake new/yugabyte-db-2026.1.1.0/cmake_modules/FindZlib.cmake
---- a/cmake_modules/FindZlib.cmake	2026-08-06 03:52:33.000000000 +0200
-+++ b/cmake_modules/FindZlib.cmake	2026-08-17 13:46:14.521038270 +0200
+--- a/cmake_modules/FindZlib.cmake
++++ b/cmake_modules/FindZlib.cmake
 @@ -31,6 +31,10 @@
    NO_CMAKE_SYSTEM_PATH
    NO_SYSTEM_ENVIRONMENT_PATH)
@@ -342,9 +327,8 @@ diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindZlib.cmake new/yugabyte-
  include(FindPackageHandleStandardArgs)
  find_package_handle_standard_args(ZLIB REQUIRED_VARS
    ZLIB_SHARED_LIB ZLIB_STATIC_LIB ZLIB_INCLUDE_DIR)
-diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/YugabyteFindThirdParty.cmake new/yugabyte-db-2026.1.1.0/cmake_modules/YugabyteFindThirdParty.cmake
---- a/cmake_modules/YugabyteFindThirdParty.cmake	2026-08-06 03:52:33.000000000 +0200
-+++ b/cmake_modules/YugabyteFindThirdParty.cmake	2026-08-17 13:48:12.400267786 +0200
+--- a/cmake_modules/YugabyteFindThirdParty.cmake
++++ b/cmake_modules/YugabyteFindThirdParty.cmake
 @@ -156,7 +156,8 @@
    include_directories(SYSTEM ${PROTOBUF_INCLUDE_DIR})
    ADD_THIRDPARTY_LIB(protobuf
@@ -384,9 +368,8 @@ diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/YugabyteFindThirdParty.cmake
  
    ## libxml2
    find_package(LibXml2 MODULE REQUIRED)
-diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/YugabyteFunctions.cmake new/yugabyte-db-2026.1.1.0/cmake_modules/YugabyteFunctions.cmake
---- a/cmake_modules/YugabyteFunctions.cmake	2026-08-06 03:52:33.000000000 +0200
-+++ b/cmake_modules/YugabyteFunctions.cmake	2026-08-17 13:47:51.991851142 +0200
+--- a/cmake_modules/YugabyteFunctions.cmake
++++ b/cmake_modules/YugabyteFunctions.cmake
 @@ -449,8 +449,13 @@
        target_link_libraries("${name}" profiler)
      endif()
@@ -546,9 +529,8 @@ diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/YugabyteFunctions.cmake new/
    endif()
  endmacro()
  
-diff -urN orig/yugabyte-db-2026.1.1.0/python/yugabyte/build_postgres.py new/yugabyte-db-2026.1.1.0/python/yugabyte/build_postgres.py
---- a/python/yugabyte/build_postgres.py	2026-08-06 03:52:33.000000000 +0200
-+++ b/python/yugabyte/build_postgres.py	2026-08-17 13:47:51.992905625 +0200
+--- a/python/yugabyte/build_postgres.py
++++ b/python/yugabyte/build_postgres.py
 @@ -17,6 +17,7 @@
  directories.
  """
@@ -596,9 +578,8 @@ diff -urN orig/yugabyte-db-2026.1.1.0/python/yugabyte/build_postgres.py new/yuga
  
          env_vars_str = self.get_env_vars_str(self.env_vars_for_build_stamp)
          build_stamp = "\n".join([
-diff -urN orig/yugabyte-db-2026.1.1.0/src/postgres/CMakeLists.txt new/yugabyte-db-2026.1.1.0/src/postgres/CMakeLists.txt
---- a/src/postgres/CMakeLists.txt	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/postgres/CMakeLists.txt	2026-08-17 13:47:51.992232677 +0200
+--- a/src/postgres/CMakeLists.txt
++++ b/src/postgres/CMakeLists.txt
 @@ -71,6 +71,11 @@
       (IS_APPLE_CLANG AND "${COMPILER_VERSION}" VERSION_GREATER_EQUAL "14.0.3"))
      add_pg_c_cxx_flags(-Wno-error=deprecated-non-prototype)
@@ -628,10 +609,10 @@ diff -urN orig/yugabyte-db-2026.1.1.0/src/postgres/CMakeLists.txt new/yugabyte-d
    endif()
    if(IS_GCC)
      # To avoid these errors when linking postgres executables:
-diff -urN orig/yugabyte-db-2026.1.1.0/src/yb/util/CMakeLists.txt new/yugabyte-db-2026.1.1.0/src/yb/util/CMakeLists.txt
---- a/src/yb/util/CMakeLists.txt	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/util/CMakeLists.txt	2026-08-17 13:47:51.993235419 +0200
-@@ -258,7 +258,12 @@
+--- a/src/yb/util/CMakeLists.txt
++++ b/src/yb/util/CMakeLists.txt
+@@ -260,6 +260,10 @@
+ set(OPENTELEMETRY_LIBRARIES
    opentelemetry_trace
    opentelemetry_exporter_otlp_http
 +  opentelemetry_exporter_otlp_http_client
@@ -639,16 +620,12 @@ diff -urN orig/yugabyte-db-2026.1.1.0/src/yb/util/CMakeLists.txt new/yugabyte-db
 +  opentelemetry_logs
 +  opentelemetry_http_client_curl
    opentelemetry_resources
--  opentelemetry_proto)
-+  opentelemetry_proto
-+  opentelemetry_common)
+   opentelemetry_common
+   opentelemetry_proto)
  
- set(UTIL_LIBS
-   absl
-diff -urN orig/yugabyte-db-2026.1.1.0/yb_build.sh new/yugabyte-db-2026.1.1.0/yb_build.sh
---- a/yb_build.sh	2026-08-06 03:52:33.000000000 +0200
-+++ b/yb_build.sh	2026-08-17 13:47:51.993130277 +0200
-@@ -1017,6 +1017,9 @@
+--- a/yb_build.sh
++++ b/yb_build.sh
+@@ -1018,6 +1018,9 @@
      fatal "Google TCMalloc is only supported on linux. OSTYPE is: '${OSTYPE}'."
    fi
    cmake_opts+=( "-DYB_GOOGLE_TCMALLOC=1" )
@@ -658,7 +635,6 @@ diff -urN orig/yugabyte-db-2026.1.1.0/yb_build.sh new/yugabyte-db-2026.1.1.0/yb_
  fi
  
  if [[ $build_type == "prof_gen" ]]; then
-diff -urN orig/yugabyte-db-2026.1.1.0/cmake_modules/FindLibUnwind.cmake new/yugabyte-db-2026.1.1.0/cmake_modules/FindLibUnwind.cmake
 --- a/cmake_modules/FindLibUnwind.cmake
 +++ b/cmake_modules/FindLibUnwind.cmake
 @@ -53,6 +53,7 @@

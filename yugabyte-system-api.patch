@@ -1,5 +1,5 @@
---- a/src/yb/util/format.h	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/util/format.h	2026-08-16 19:00:38.947990912 +0200
+--- a/src/yb/util/format.h
++++ b/src/yb/util/format.h
 @@ -78,7 +78,7 @@
  
  template <class T>
@@ -9,8 +9,8 @@
   public:
    template<class U>
    explicit FormatValue(const U& value) : value_(value), len_(strlen(value_)) {}
---- a/src/yb/util/json_document.h	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/util/json_document.h	2026-08-16 19:03:02.673350977 +0200
+--- a/src/yb/util/json_document.h
++++ b/src/yb/util/json_document.h
 @@ -12,6 +12,7 @@
  
  #pragma once
@@ -19,8 +19,8 @@
  #include <memory>
  #include <string>
  #include <string_view>
---- a/src/yb/util/logging.cc	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/util/logging.cc	2026-08-16 19:03:02.687725289 +0200
+--- a/src/yb/util/logging.cc
++++ b/src/yb/util/logging.cc
 @@ -41,6 +41,7 @@
  // See the License for the specific language governing permissions and
  // limitations under the License.
@@ -29,8 +29,8 @@
  #include <signal.h>
  #include <stdio.h>
  
---- a/src/yb/util/uuid.cc	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/util/uuid.cc	2026-08-16 19:07:56.419618862 +0200
+--- a/src/yb/util/uuid.cc
++++ b/src/yb/util/uuid.cc
 @@ -183,7 +183,17 @@
    unsigned int hash[kShaDigestSize];
    sha1.process_bytes(boost_uuid_.data + kTimeUUIDMacOffset, kTimeUUIDTotalMacBytes);
@@ -50,8 +50,8 @@
    for (size_t i = 0; i < kTimeUUIDTotalMacBytes; i ++) {
      tmp[i] = (hash[i % kShaDigestSize] & 255);
      hash[i % kShaDigestSize] = hash[i % kShaDigestSize] >> 8;
---- a/src/yb/util/cast.h	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/util/cast.h	2026-08-16 19:29:08.560255000 +0200
+--- a/src/yb/util/cast.h
++++ b/src/yb/util/cast.h
 @@ -13,6 +13,7 @@
  
  #pragma once
@@ -60,8 +60,8 @@
  #include <memory>
  
  namespace yb {
---- a/src/yb/util/net/sockaddr.cc	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/util/net/sockaddr.cc	2026-08-16 19:05:51.982217049 +0200
+--- a/src/yb/util/net/sockaddr.cc
++++ b/src/yb/util/net/sockaddr.cc
 @@ -54,7 +54,7 @@
    size_t seed = 0;
  
@@ -89,8 +89,8 @@
    if (ec) {
      return STATUS_FORMAT(NetworkError, "Failed to parse $0: $1", input, ec);
    }
---- a/src/yb/util/net/inetaddress.cc	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/util/net/inetaddress.cc	2026-08-16 19:05:51.942783830 +0200
+--- a/src/yb/util/net/inetaddress.cc
++++ b/src/yb/util/net/inetaddress.cc
 @@ -48,12 +48,7 @@
  }
  
@@ -105,8 +105,8 @@
    return Status::OK();
  }
  
---- a/src/yb/util/net/socket.cc	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/util/net/socket.cc	2026-08-16 19:05:51.942783830 +0200
+--- a/src/yb/util/net/socket.cc
++++ b/src/yb/util/net/socket.cc
 @@ -374,7 +374,7 @@
  
  Status Socket::BindForOutgoingConnection() {
@@ -116,8 +116,8 @@
    CHECK(!ec)
      << "Invalid local IP set for 'local_ip_for_outbound_sockets': '"
      << FLAGS_local_ip_for_outbound_sockets << "': " << ec;
---- a/src/yb/util/net/net_util.cc	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/util/net/net_util.cc	2026-08-16 19:05:51.993974475 +0200
+--- a/src/yb/util/net/net_util.cc
++++ b/src/yb/util/net/net_util.cc
 @@ -666,13 +666,13 @@
  
  bool IsWildcardAddress(const std::string& host_str) {
@@ -144,8 +144,8 @@
      if (!ec) {
        return address;
      }
---- a/src/yb/util/net/dns_resolver.cc	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/util/net/dns_resolver.cc	2026-08-16 19:05:51.942783830 +0200
+--- a/src/yb/util/net/dns_resolver.cc
++++ b/src/yb/util/net/dns_resolver.cc
 @@ -184,7 +184,7 @@
          static const std::string kService = "";
          std::string host_copy(host);
@@ -155,8 +155,8 @@
              [this, host_copy, promise, metric, start_time = CoarseMonoClock::Now()](
                  const boost::system::error_code& error,
                  const Resolver::results_type& entries) mutable {
---- a/src/yb/util/net/tunnel.cc	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/util/net/tunnel.cc	2026-08-16 19:06:07.135938367 +0200
+--- a/src/yb/util/net/tunnel.cc
++++ b/src/yb/util/net/tunnel.cc
 @@ -13,6 +13,7 @@
  
  #include "yb/util/net/tunnel.h"
@@ -192,8 +192,8 @@
        LOG(INFO) << "Shutdown tunnel: " << local_ << " => " << remote_;
        if (acceptor_) {
          boost::system::error_code ec;
---- a/src/yb/util/net/net_util-test.cc	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/util/net/net_util-test.cc	2026-08-16 19:06:32.174506182 +0200
+--- a/src/yb/util/net/net_util-test.cc
++++ b/src/yb/util/net/net_util-test.cc
 @@ -82,7 +82,7 @@
  TEST(SockaddrTest, Test) {
    boost::system::error_code ec;
@@ -203,8 +203,8 @@
    ASSERT_FALSE(ec);
    Endpoint endpoint(address, 12345);
    ASSERT_EQ("1.1.1.1:12345", ToString(endpoint));
---- a/src/yb/util/net/inetaddress-test.cc	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/util/net/inetaddress-test.cc	2026-08-16 19:06:32.174506182 +0200
+--- a/src/yb/util/net/inetaddress-test.cc
++++ b/src/yb/util/net/inetaddress-test.cc
 @@ -115,7 +115,7 @@
    vector<IpAddress> addresses;
    for (const auto &address_str : address_strs) {
@@ -214,8 +214,8 @@
    }
    LOG(INFO) << "Starting test";
    auto test_addresses = addresses;
---- a/src/yb/util/net/dns_resolver-test.cc	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/util/net/dns_resolver-test.cc	2026-08-16 19:06:41.630631214 +0200
+--- a/src/yb/util/net/dns_resolver-test.cc
++++ b/src/yb/util/net/dns_resolver-test.cc
 @@ -34,6 +34,7 @@
  
  #include <vector>
@@ -245,8 +245,8 @@
  
    DnsResolver resolver_{&io_service_, nullptr};
  };
---- a/src/yb/rpc/scheduler.cc	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/rpc/scheduler.cc	2026-08-16 19:10:55.593977418 +0200
+--- a/src/yb/rpc/scheduler.cc
++++ b/src/yb/rpc/scheduler.cc
 @@ -17,6 +17,8 @@
  
  #include <thread>
@@ -323,8 +323,8 @@
        tasks_.erase(tasks_.begin());
      }
  
---- a/src/yb/rpc/service_pool.cc	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/rpc/service_pool.cc	2026-08-16 19:06:23.821280401 +0200
+--- a/src/yb/rpc/service_pool.cc
++++ b/src/yb/rpc/service_pool.cc
 @@ -41,6 +41,7 @@
  #include <string>
  #include <vector>
@@ -360,8 +360,8 @@
                    CheckTimeout(task_id, time, status);
                  });
                },
---- a/src/yb/rpc/io_thread_pool.cc	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/rpc/io_thread_pool.cc	2026-08-16 19:06:23.763384259 +0200
+--- a/src/yb/rpc/io_thread_pool.cc
++++ b/src/yb/rpc/io_thread_pool.cc
 @@ -17,7 +17,8 @@
  
  #include <thread>
@@ -392,8 +392,8 @@
  };
  
  IoThreadPool::IoThreadPool(const std::string& name, size_t num_threads, Cgroup* cgroup)
---- a/src/yb/rpc/rpc_pch.h	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/rpc/rpc_pch.h	2026-08-16 19:06:23.688152939 +0200
+--- a/src/yb/rpc/rpc_pch.h
++++ b/src/yb/rpc/rpc_pch.h
 @@ -71,7 +71,7 @@
  #include <vector>
  
@@ -403,8 +403,8 @@
  #include <boost/asio/ip/tcp.hpp>
  #include <boost/asio/steady_timer.hpp>
  #include <boost/asio/strand.hpp>
---- a/src/yb/rpc/secure_stream.cc	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/rpc/secure_stream.cc	2026-08-16 19:10:55.789979993 +0200
+--- a/src/yb/rpc/secure_stream.cc
++++ b/src/yb/rpc/secure_stream.cc
 @@ -94,6 +94,17 @@
  
  #define SSL_STATUS(type, format) STATUS_FORMAT(type, format, SSLErrorMessage(ERR_get_error()))
@@ -511,8 +511,8 @@
          if (!other_name.empty()) {
            if (FLAGS_dump_certificate_entries) {
              certificate_entries_.push_back(Format("ON:$0", other_name.ToBuffer()));
---- a/src/yb/master/master_snapshot_coordinator.cc	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/master/master_snapshot_coordinator.cc	2026-08-16 19:06:23.834395875 +0200
+--- a/src/yb/master/master_snapshot_coordinator.cc
++++ b/src/yb/master/master_snapshot_coordinator.cc
 @@ -19,6 +19,7 @@
  #include <boost/multi_index/composite_key.hpp>
  #include <boost/multi_index/mem_fun.hpp>
@@ -521,7 +521,7 @@
  
  #include "yb/common/common_types_util.h"
  #include "yb/common/constants.h"
-@@ -1453,7 +1454,8 @@
+@@ -1461,7 +1462,8 @@
  
    template <class Operations>
    void PostScheduleOperations(Operations&& operations, int64_t leader_term) {
@@ -531,7 +531,7 @@
          [this, operations = std::move(operations), leader_term] {
        ScheduleOperations(operations, leader_term);
      });
-@@ -1909,7 +1911,7 @@
+@@ -1917,7 +1919,7 @@
        if (FLAGS_schedule_snapshot_rpcs_out_of_band && batch_done && !is_empty) {
          // Send another batch. This prevents having to wait for the regular cycle
          // of master snapshot coordinator which can be too slow.
@@ -540,7 +540,7 @@
            LOG(INFO) << "Rescheduling Snapshot RPCs out of band.";
            Poll();
          });
-@@ -1946,7 +1948,7 @@
+@@ -1954,7 +1956,7 @@
          if (FLAGS_schedule_restoration_rpcs_out_of_band && batch_done) {
            // Send another batch. This prevents having to wait for the regular cycle
            // of master snapshot coordinator which can be too slow.
@@ -549,8 +549,8 @@
              LOG(INFO) << "Rescheduling restoration RPCs out of band.";
              Poll();
            });
---- a/src/yb/master/master_heartbeat_service.cc	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/master/master_heartbeat_service.cc	2026-08-16 19:40:46.195402985 +0200
+--- a/src/yb/master/master_heartbeat_service.cc
++++ b/src/yb/master/master_heartbeat_service.cc
 @@ -14,6 +14,7 @@
  #include <algorithm>
  #include <iterator>
@@ -559,8 +559,8 @@
  #include <google/protobuf/repeated_field.h>
  
  #include "yb/common/common_flags.h"
---- a/src/yb/master/xcluster/xcluster_safe_time_service.cc	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/master/xcluster/xcluster_safe_time_service.cc	2026-08-16 19:42:33.203591180 +0200
+--- a/src/yb/master/xcluster/xcluster_safe_time_service.cc
++++ b/src/yb/master/xcluster/xcluster_safe_time_service.cc
 @@ -14,6 +14,7 @@
  
  #include <chrono>
@@ -578,8 +578,8 @@
      poller_.Resume();
    });
  }
---- a/src/yb/tserver/tablet_server_main_impl.cc	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/tserver/tablet_server_main_impl.cc	2026-08-16 19:06:23.688152939 +0200
+--- a/src/yb/tserver/tablet_server_main_impl.cc
++++ b/src/yb/tserver/tablet_server_main_impl.cc
 @@ -265,11 +265,10 @@
  void RunIOService(
      std::function<void()> trigger_termination_fn, boost::asio::io_service* io_service) {
@@ -594,8 +594,8 @@
      trigger_termination_fn();
    }
  }
---- a/src/yb/yql/cql/cqlserver/cql_server.cc	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/yql/cql/cqlserver/cql_server.cc	2026-08-16 19:10:55.561986156 +0200
+--- a/src/yb/yql/cql/cqlserver/cql_server.cc
++++ b/src/yb/yql/cql/cqlserver/cql_server.cc
 @@ -120,24 +120,14 @@
  }
  
@@ -623,8 +623,8 @@
    timer_.async_wait(boost::bind(&CQLServer::CQLNodeListRefresh, this,
                                  boost::asio::placeholders::error));
  }
---- a/src/yb/yql/cql/cqlserver/cql_server.h	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/yql/cql/cqlserver/cql_server.h	2026-08-16 19:38:39.355606509 +0200
+--- a/src/yb/yql/cql/cqlserver/cql_server.h
++++ b/src/yb/yql/cql/cqlserver/cql_server.h
 @@ -26,6 +26,7 @@
  #include <type_traits>
  
@@ -633,8 +633,8 @@
  #include <boost/container/small_vector.hpp>
  #include <boost/date_time/posix_time/posix_time.hpp>
  #include <boost/version.hpp>
---- a/src/yb/yql/cql/ql/parser/scanner.cc	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/yql/cql/ql/parser/scanner.cc	2026-08-16 19:28:25.752410000 +0200
+--- a/src/yb/yql/cql/ql/parser/scanner.cc
++++ b/src/yb/yql/cql/ql/parser/scanner.cc
 @@ -62,7 +62,10 @@
  
    token_loc_.initialize();
@@ -767,9 +767,9 @@
            return GramProcessor::make_WITH_LA(cursor_);
          }
  
---- a/src/yb/yql/redis/redisserver/redisserver-test.cc	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/yql/redis/redisserver/redisserver-test.cc	2026-08-16 19:06:32.174506182 +0200
-@@ -2556,7 +2556,7 @@
+--- a/src/yb/yql/redis/redisserver/redisserver-test.cc
++++ b/src/yb/yql/redis/redisserver/redisserver-test.cc
+@@ -2563,7 +2563,7 @@
   private:
    Endpoint RedisProxyEndpoint() override {
      auto ts0 = external_mini_cluster()->tablet_server(0);
@@ -778,8 +778,8 @@
    }
  
    bool use_external_mini_cluster() override { return true; }
---- a/src/yb/rpc/rpc_stub-test.cc	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/rpc/rpc_stub-test.cc	2026-08-16 19:06:32.234506975 +0200
+--- a/src/yb/rpc/rpc_stub-test.cc
++++ b/src/yb/rpc/rpc_stub-test.cc
 @@ -284,10 +284,10 @@
  TEST_F(RpcStubTest, TestIncoherence) {
    static const std::string kServer1Name = "Server1";
@@ -793,8 +793,8 @@
  
    auto server1 = StartTestServer(server1options, kServer1Name);
    auto proxy1holder = CreateCalculatorProxyHolder(server1.bound_endpoint());
---- a/src/yb/common/common_fwd.h	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/common/common_fwd.h	2026-08-16 19:08:51.508345064 +0200
+--- a/src/yb/common/common_fwd.h
++++ b/src/yb/common/common_fwd.h
 @@ -13,6 +13,7 @@
  
  #pragma once
@@ -803,8 +803,8 @@
  #include <memory>
  #include <vector>
  
---- a/src/yb/client/tablet_server.h	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/client/tablet_server.h	2026-08-16 19:14:32.572823001 +0200
+--- a/src/yb/client/tablet_server.h
++++ b/src/yb/client/tablet_server.h
 @@ -11,6 +11,7 @@
  // under the License.
  //
@@ -813,8 +813,8 @@
  #include <string>
  #pragma once
  
---- a/src/postgres/src/timezone/zic.c	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/postgres/src/timezone/zic.c	2026-08-16 19:21:10.930028929 +0200
+--- a/src/postgres/src/timezone/zic.c
++++ b/src/postgres/src/timezone/zic.c
 @@ -2633,7 +2633,7 @@
  	   bool isdst, zic_t save, bool doquotes)
  {
@@ -824,8 +824,8 @@
  	size_t		len;
  	char const *format = zp->z_format;
  
---- a/src/postgres/third-party-extensions/documentdb/Makefile.cflags	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/postgres/third-party-extensions/documentdb/Makefile.cflags	2026-08-16 19:26:59.526101682 +0200
+--- a/src/postgres/third-party-extensions/documentdb/Makefile.cflags
++++ b/src/postgres/third-party-extensions/documentdb/Makefile.cflags
 @@ -17,7 +17,7 @@
  # YB: Replace libbson-static-1.0 and intelmathlib with yb thirdparty based bson and bid libs.
  PG_LDFLAGS = -lbson-1.0 $(YB_THIRDPARTY_DIR)/installed/uninstrumented/lib/libbid.a \
@@ -836,8 +836,8 @@
  PG_LDFLAGS += -Wl,-rpath=$(shell $(PG_CONFIG) --pkglibdir)
  
  ifeq ($(USE_DOCUMENTDB_CORE),1)
---- a/src/yb/server/pprof-path-handlers.cc	2026-08-06 03:52:33.000000000 +0200
-+++ b/src/yb/server/pprof-path-handlers.cc	2026-08-17 06:40:00.000000000 +0200
+--- a/src/yb/server/pprof-path-handlers.cc
++++ b/src/yb/server/pprof-path-handlers.cc
 @@ -49,6 +49,7 @@
  #include <gperftools/profiler.h>
  #endif  // YB_GPERFTOOLS_TCMALLOC

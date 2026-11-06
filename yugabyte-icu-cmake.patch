@@ -3,7 +3,7 @@ ICU_<comp>_LIBRARIES, which stays NOTFOUND.
 
 --- a/cmake_modules/YugabyteFindThirdParty.cmake
 +++ b/cmake_modules/YugabyteFindThirdParty.cmake
-@@ -367,6 +367,18 @@ function(yb_find_third_party_dependencies)
+@@ -383,6 +383,18 @@
    include_directories(SYSTEM ${Boost_INCLUDE_DIR})
  
    find_package(ICU COMPONENTS i18n uc REQUIRED)
