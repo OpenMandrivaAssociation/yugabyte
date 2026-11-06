@@ -79,6 +79,8 @@ Patch8:		yugabyte-flex-include.patch
 Patch9:		yugabyte-gperftools-sampling.patch
 # Graviton -march SIGILLs the build host when it runs protoc plugins.
 Patch10:	yugabyte-aarch64-baseline.patch
+# lz4 1.10 hides LZ4_compress() unless LZ4_DISABLE_DEPRECATE_WARNINGS.
+Patch11:	yugabyte-lz4-1.10.patch
 
 # Upstream only supports x86_64 and aarch64 (CMakeLists fatals otherwise).
 ExclusiveArch:	%{x86_64} aarch64
@@ -220,6 +222,7 @@ Then connect with:
 %patch -P 8 -p1
 %patch -P 9 -p1
 %patch -P 10 -p1
+%patch -P 11 -p1
 
 cd %{_builddir}
 tar -xf %{SOURCE1}

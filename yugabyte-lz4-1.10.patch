@@ -1,0 +1,20 @@
+--- a/src/yb/rpc/compressed_stream.cc	2026-11-02 13:46:40.000000000 +0100
++++ b/src/yb/rpc/compressed_stream.cc	2026-11-07 00:55:13.074729733 +0100
+@@ -713,9 +713,14 @@
+         }
+         VLOG_WITH_FUNC(4) << "chunk: " << chunk.size();
+         input_slice.remove_prefix(chunk.size());
+-        RefCntBuffer output(kHeaderLen + LZ4_compressBound(narrow_cast<int>(chunk.size())));
+-        int res = LZ4_compress(
+-            chunk.cdata(), output.data() + kHeaderLen, narrow_cast<int>(chunk.size()));
++        // lz4 1.10 declares LZ4_compress() only when
++        // LZ4_DISABLE_DEPRECATE_WARNINGS is set. The buffer is already
++        // sized to LZ4_compressBound().
++        const int src_size = narrow_cast<int>(chunk.size());
++        const int dst_capacity = LZ4_compressBound(src_size);
++        RefCntBuffer output(kHeaderLen + dst_capacity);
++        int res = LZ4_compress_default(
++            chunk.cdata(), output.data() + kHeaderLen, src_size, dst_capacity);
+         if (res <= 0) {
+           return STATUS_FORMAT(RuntimeError, "LZ4 compression failed: $0", res);
+         }
