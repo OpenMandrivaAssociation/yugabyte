@@ -1,5 +1,36 @@
---- a/src/yb/rpc/compressed_stream.cc	2026-11-02 13:46:40.000000000 +0100
-+++ b/src/yb/rpc/compressed_stream.cc	2026-11-07 00:55:13.074729733 +0100
+diff -ruN a/src/yb/rocksdb/util/compression.h b/src/yb/rocksdb/util/compression.h
+--- a/src/yb/rocksdb/util/compression.h	2026-11-07 02:23:36.293459993 +0100
++++ b/src/yb/rocksdb/util/compression.h	2026-11-07 02:23:36.348867527 +0100
+@@ -521,9 +521,10 @@
+ 
+   int compressBound = LZ4_compressBound(static_cast<int>(length));
+   output->resize(static_cast<size_t>(output_header_len + compressBound));
++  // lz4 1.11 removed LZ4_compress_limitedOutput(). Same arguments.
+   int outlen =
+-      LZ4_compress_limitedOutput(input, &(*output)[output_header_len],
+-                                 static_cast<int>(length), compressBound);
++      LZ4_compress_default(input, &(*output)[output_header_len],
++                           static_cast<int>(length), compressBound);
+   if (outlen == 0) {
+     return false;
+   }
+@@ -603,9 +604,10 @@
+   output->resize(static_cast<size_t>(output_header_len + compressBound));
+   int outlen;
+ #ifdef LZ4_VERSION_MAJOR  // they only started defining this since r113
+-  outlen = LZ4_compressHC2_limitedOutput(input, &(*output)[output_header_len],
+-                                         static_cast<int>(length),
+-                                         compressBound, opts.level);
++  // lz4 1.11 removed LZ4_compressHC2_limitedOutput(). Same arguments.
++  outlen = LZ4_compress_HC(input, &(*output)[output_header_len],
++                           static_cast<int>(length),
++                           compressBound, opts.level);
+ #else
+   outlen =
+       LZ4_compressHC_limitedOutput(input, &(*output)[output_header_len],
+diff -ruN a/src/yb/rpc/compressed_stream.cc b/src/yb/rpc/compressed_stream.cc
+--- a/src/yb/rpc/compressed_stream.cc	2026-11-07 02:23:35.149458261 +0100
++++ b/src/yb/rpc/compressed_stream.cc	2026-11-07 02:23:36.332732166 +0100
 @@ -713,9 +713,14 @@
          }
          VLOG_WITH_FUNC(4) << "chunk: " << chunk.size();
