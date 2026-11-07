@@ -81,6 +81,8 @@ Patch9:		yugabyte-gperftools-sampling.patch
 Patch10:	yugabyte-aarch64-baseline.patch
 # lz4 1.11 removed the obsolete LZ4_compress* declarations.
 Patch11:	yugabyte-lz4-1.10.patch
+# Third-party glog/gflags use the same Graviton flags. The plugin links them.
+Patch12:	yugabyte-thirdparty-aarch64-baseline.patch
 
 # Upstream only supports x86_64 and aarch64 (CMakeLists fatals otherwise).
 ExclusiveArch:	%{x86_64} aarch64
@@ -228,6 +230,7 @@ cd %{_builddir}
 tar -xf %{SOURCE1}
 cd yugabyte-db-thirdparty-%{thirdparty_commit}
 %patch -P 1 -p1
+%patch -P 12 -p1
 # System protobuf is libstdc++. Forcing libc++ breaks that link.
 python3 - <<'PY'
 from pathlib import Path

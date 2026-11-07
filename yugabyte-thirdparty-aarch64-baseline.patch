@@ -1,0 +1,25 @@
+--- a/python/yugabyte_db_thirdparty/builder.py
++++ b/python/yugabyte_db_thirdparty/builder.py
+@@ -122,10 +122,10 @@
+     '-DTHREAD_SANITIZER',
+ ]
+ 
+-# https://github.com/aws/aws-graviton-getting-started/blob/main/c-c++.md
++# Distribution baseline has no dotprod and no LSE. -march=armv8.2-a with
++# -mno-outline-atomics emits raw LSE atomics, which SIGILL host tools
++# (protoc-gen-insertions) and anything that later runs on cooker aarch64.
+ GRAVITON_COMPILER_FLAGS = [
+-    '-march=armv8.2-a+fp16+rcpc+dotprod+crypto',
+-    '-mtune=neoverse-n1',
+     '-mno-outline-atomics',
+ ]
+ 
+@@ -507,7 +507,7 @@
+ 
+             self.shared_lib_suffix = "so"
+ 
+-            # Currently linux/aarch64 build is optimized for Graviton2.
++            # Keep outline atomics off, but do not raise the architecture.
+             if platform.uname().processor == 'aarch64':
+                 self.compiler_flags += GRAVITON_COMPILER_FLAGS
+ 
