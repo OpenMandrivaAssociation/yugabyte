@@ -85,6 +85,8 @@ Patch11:	yugabyte-lz4-1.10.patch
 Patch12:	yugabyte-thirdparty-aarch64-baseline.patch
 # Abseil LOG() is a statement. A few call sites still pass it as a stream.
 Patch13:	yugabyte-absl-log.patch
+# Abseil LOG() does not accept the DETAIL pseudo-severity.
+Patch14:	yugabyte-absl-log-detail.patch
 
 # Upstream only supports x86_64 and aarch64 (CMakeLists fatals otherwise).
 ExclusiveArch:	%{x86_64} aarch64
@@ -228,6 +230,7 @@ Then connect with:
 %patch -P 10 -p1
 %patch -P 11 -p1
 %patch -P 13 -p1
+%patch -P 14 -p1
 
 cd %{_builddir}
 tar -xf %{SOURCE1}

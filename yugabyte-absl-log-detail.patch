@@ -1,0 +1,124 @@
+diff --git a/src/yb/docdb/docdb_compaction_context.cc b/src/yb/docdb/docdb_compaction_context.cc
+index a5c2ec0..d8a76c9 100644
+--- a/src/yb/docdb/docdb_compaction_context.cc
++++ b/src/yb/docdb/docdb_compaction_context.cc
+@@ -816,7 +816,7 @@ class DocDBCompactionFeed : public rocksdb::CompactionFeed, public PackedRowFeed
+             compaction_reason, key_bounds_, schema_packing_provider,
+             retention_directive_.history_cutoff, vector_metadata_iterator_provider)) {
+     // TODO: switch this to VLOG if it becomes too chatty.
+-    LOG(DETAIL)
++    YB_LOG_DETAIL
+         << "DocDB compaction feed, min_other_data_ht: " << encoded_min_other_data_ht_.ToString()
+         << ", history_cutoff = " << retention_directive_.history_cutoff
+         << ", repack range: " << encoded_repack_min_ht_.ToString()
+diff --git a/src/yb/docdb/docdb_rocksdb_util.cc b/src/yb/docdb/docdb_rocksdb_util.cc
+index 6663ce5..85d5e11 100644
+--- a/src/yb/docdb/docdb_rocksdb_util.cc
++++ b/src/yb/docdb/docdb_rocksdb_util.cc
+@@ -932,7 +932,7 @@ class RocksDBPatcher::Impl {
+       auto& consensus_frontier = down_cast<ConsensusFrontier&>(*file.largest.user_frontier);
+       // If all the data in the file is already as of old time, no need to set any filter.
+       if (consensus_frontier.hybrid_time() <= value) {
+-        LOG(DETAIL) << "No need to set hybrid time filter since the largest frontier is already"
++        YB_LOG_DETAIL << "No need to set hybrid time filter since the largest frontier is already"
+                     << " older. Largest frontier HT " << consensus_frontier.hybrid_time()
+                     << ", filter HT " << value;
+         return;
+diff --git a/src/yb/tablet/operations/snapshot_operation.cc b/src/yb/tablet/operations/snapshot_operation.cc
+index eb19a0f..f9516e0 100644
+--- a/src/yb/tablet/operations/snapshot_operation.cc
++++ b/src/yb/tablet/operations/snapshot_operation.cc
+@@ -222,7 +222,7 @@ Status SnapshotOperation::DoReplicated(int64_t leader_term, Status* complete_sta
+     docdb::ConsensusFrontier frontier;
+     frontier.set_op_id(op_id());
+     frontier.set_hybrid_time(hybrid_time());
+-    LOG(DETAIL) << "Forcing modify flushed frontier to " << frontier.op_id();
++    YB_LOG_DETAIL << "Forcing modify flushed frontier to " << frontier.op_id();
+     return VERIFY_RESULT(tablet_safe())->ModifyFlushedFrontier(
+         frontier, rocksdb::FrontierModificationMode::kUpdate);
+   }
+diff --git a/src/yb/tablet/tablet_bootstrap_state_flusher.cc b/src/yb/tablet/tablet_bootstrap_state_flusher.cc
+index 4a8652b..012ae64 100644
+--- a/src/yb/tablet/tablet_bootstrap_state_flusher.cc
++++ b/src/yb/tablet/tablet_bootstrap_state_flusher.cc
+@@ -150,7 +150,7 @@ Status TabletBootstrapStateFlusher::SubmitFlushBootstrapStateTask() {
+     // If there's no ongoing flush but there's read event, wait until it's done and retry.
+     WaitForFlushIdleOrShutdown();
+   }
+-  LOG(DETAIL) << "Tablet " << tablet_id_ << " is submitting flush bootstrap state task...";
++  YB_LOG_DETAIL << "Tablet " << tablet_id_ << " is submitting flush bootstrap state task...";
+   TEST_PAUSE_IF_FLAG(TEST_pause_before_submitting_flush_bootstrap_state);
+   Status s = flush_bootstrap_state_pool_token_->SubmitFunc(
+       std::bind(&TabletBootstrapStateFlusher::FlushBootstrapState,
+diff --git a/src/yb/tserver/tablet_memory_manager.cc b/src/yb/tserver/tablet_memory_manager.cc
+index e610003..9279b44 100644
+--- a/src/yb/tserver/tablet_memory_manager.cc
++++ b/src/yb/tserver/tablet_memory_manager.cc
+@@ -375,7 +375,7 @@ void TabletMemoryManager::FlushTabletIfLimitExceeded() {
+       // we will schedule a second flush, which will unnecessarily stall writes for a short time.
+       // This will not happen often, but should be fixed.
+       if (tablet_to_flush) {
+-        LOG(DETAIL) << LogPrefix(peer_to_flush) << "Flushing tablet "
++        YB_LOG_DETAIL << LogPrefix(peer_to_flush) << "Flushing tablet "
+                     << tablet_to_flush->tablet_id()
+                     << ", which has oldest memstore write time of "
+                     << tablet_to_flush->OldestMutableMemtableWriteHybridTime();
+@@ -394,7 +394,7 @@ void TabletMemoryManager::FlushTabletIfLimitExceeded() {
+     }
+     first_iteration = false;
+   }
+-  LOG(DETAIL) << Format(
++  YB_LOG_DETAIL << Format(
+       "RocksDB reported write buffers size of $0 bytes now under Memstore global limit",
+       memory_monitor_->memory_usage());
+ }
+diff --git a/src/yb/tserver/tablet_service.cc b/src/yb/tserver/tablet_service.cc
+index b70c631..428c047 100644
+--- a/src/yb/tserver/tablet_service.cc
++++ b/src/yb/tserver/tablet_service.cc
+@@ -555,7 +555,7 @@ class WriteQueryCompletionCallback {
+       }
+ 
+       if (status.IsTryAgain()) {
+-          LOG(DETAIL) << "Write failed: " << status;
++          YB_LOG_DETAIL << "Write failed: " << status;
+       } else {
+           LOG(INFO) << "Write failed: " << status;
+       }
+diff --git a/src/yb/util/logging-test.cc b/src/yb/util/logging-test.cc
+index 4cf0a04..b267b23 100644
+--- a/src/yb/util/logging-test.cc
++++ b/src/yb/util/logging-test.cc
+@@ -166,8 +166,8 @@ TEST(LoggingTest, TestYBLogSeverity) {
+     }
+   } prefix_logger;
+ 
+-  LOG(DETAIL) << kPattern << "a";
+-  LOG(DETAIL) << kPattern << "b";
++  YB_LOG_DETAIL << kPattern << "a";
++  YB_LOG_DETAIL << kPattern << "b";
+   LOG_WITH_FUNC(DETAIL) << kPattern << "c";
+   prefix_logger.Log("d");
+   prefix_logger.LogIf(/* condition = */ true, "e");
+diff --git a/src/yb/util/logging.h b/src/yb/util/logging.h
+index d7d89f3..cba0851 100644
+--- a/src/yb/util/logging.h
++++ b/src/yb/util/logging.h
+@@ -397,12 +397,14 @@ ThrottledLogWriter MakeThrottledLogWriter(google::LogMessage&& log_writer, const
+ // versions and should not obtain a lock (if one is required to obtain the prefix).
+ // There must be a LogPrefixUnlocked()/LogPrefixLocked() method available in the current
+ // scope in order to use these macros.
+-#define LOG_WITH_PREFIX_UNLOCKED(severity) LOG(severity) << LogPrefixUnlocked()
++// Expand YB_LOG_<severity> directly. Abseil's log.h redefines LOG() later (tcmalloc
++// includes it) and that macro does not accept the DETAIL pseudo-severity.
++#define LOG_WITH_PREFIX_UNLOCKED(severity) YB_LOG_##severity << LogPrefixUnlocked()
+ #define VLOG_WITH_PREFIX_UNLOCKED(verboselevel) VLOG(verboselevel) << LogPrefixUnlocked()
+ 
+ // Same as the above, but obtain the lock.
+-#define LOG_WITH_PREFIX(severity) LOG(severity) << LogPrefix()
+-#define LOG_WITH_FUNC(severity) LOG(severity) << __func__ << ": "
++#define LOG_WITH_PREFIX(severity) YB_LOG_##severity << LogPrefix()
++#define LOG_WITH_FUNC(severity) YB_LOG_##severity << __func__ << ": "
+ #define LOG_WITH_PREFIX_AND_FUNC(severity) LOG_WITH_PREFIX(severity) << __func__ << ": "
+ 
+ #define VLOG_WITH_PREFIX(verboselevel) VLOG(verboselevel) << LogPrefix()
