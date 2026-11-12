@@ -1,0 +1,101 @@
+Abseil's LOG() macro is a statement. These call sites used the glog
+stream form, which does not parse.
+
+diff -ruN a/src/yb/master/async_rpc_tasks.cc b/src/yb/master/async_rpc_tasks.cc
+--- a/src/yb/master/async_rpc_tasks.cc
++++ b/src/yb/master/async_rpc_tasks.cc
+@@ -1120,8 +1120,12 @@
+     Status s = master_->catalog_manager()->PromoteTableToRunningState(table_, epoch());
+     if (!s.ok()) {
+       auto started_hiding_or_deleting = table_->LockForRead()->started_hiding_or_deleting();
+-      (started_hiding_or_deleting ? LOG(WARNING) : LOG(DFATAL))
+-          << "Error updating table " << table_->ToString() << ": " << s;
++      // Abseil's LOG() is a statement, so it cannot be a ternary operand.
++      if (started_hiding_or_deleting) {
++        LOG(WARNING) << "Error updating table " << table_->ToString() << ": " << s;
++      } else {
++        LOG(DFATAL) << "Error updating table " << table_->ToString() << ": " << s;
++      }
+       TransitionToFailedState(MonitoredTaskState::kRunning, s);
+       return;
+     }
+diff -ruN a/src/yb/master/catalog_manager.cc b/src/yb/master/catalog_manager.cc
+--- a/src/yb/master/catalog_manager.cc
++++ b/src/yb/master/catalog_manager.cc
+@@ -8590,12 +8590,18 @@
+     // DOCDB_TABLE_NOT_COMMITTED is expected for orphaned / mid-DDL DocDB tables.
+     const bool expected_not_committed = !pgschema_name.ok()
+         && MasterError(pgschema_name.status()) == MasterErrorPB::DOCDB_TABLE_NOT_COMMITTED;
+-    (expected_not_committed ? LOG(INFO) : LOG(WARNING))
+-        << "Unable to find schema name for "
+-        << (expected_not_committed ? "not committed " : "")
+-        << "YSQL table " << table.namespace_name()
+-        << "." << table.name() << " id " << table.id()
+-        << " due to error: " << pgschema_name;
++    if (expected_not_committed) {
++      LOG(INFO) << "Unable to find schema name for "
++                << "not committed "
++                << "YSQL table " << table.namespace_name()
++                << "." << table.name() << " id " << table.id()
++                << " due to error: " << pgschema_name;
++    } else {
++      LOG(WARNING) << "Unable to find schema name for "
++                   << "YSQL table " << table.namespace_name()
++                   << "." << table.name() << " id " << table.id()
++                   << " due to error: " << pgschema_name;
++    }
+     return std::nullopt;
+   }
+ 
+@@ -8968,11 +8974,16 @@
+         // DOCDB_TABLE_NOT_COMMITTED is expected for orphaned / mid-DDL DocDB tables.
+         const bool expected_not_committed = !pgschema_name_res.ok()
+             && MasterError(pgschema_name_res.status()) == MasterErrorPB::DOCDB_TABLE_NOT_COMMITTED;
+-        (expected_not_committed ? LOG(INFO) : LOG(WARNING))
+-            << "Unable to find schema name for "
+-            << (expected_not_committed ? "not committed " : "")
+-            << "YSQL table " << table.namespace_().name()
+-            << "." << table.name() << " due to error: " << pgschema_name_res;
++        if (expected_not_committed) {
++          LOG(INFO) << "Unable to find schema name for "
++                    << "not committed "
++                    << "YSQL table " << table.namespace_().name()
++                    << "." << table.name() << " due to error: " << pgschema_name_res;
++        } else {
++          LOG(WARNING) << "Unable to find schema name for "
++                       << "YSQL table " << table.namespace_().name()
++                       << "." << table.name() << " due to error: " << pgschema_name_res;
++        }
+       } else {
+         table.set_pgschema_name(*pgschema_name_res);
+       }
+diff -ruN a/src/yb/master/master_cluster_service.cc b/src/yb/master/master_cluster_service.cc
+--- a/src/yb/master/master_cluster_service.cc
++++ b/src/yb/master/master_cluster_service.cc
+@@ -297,7 +297,10 @@
+       resp->set_dump(title + ":\n" + ss.str());
+     } else {
+       LOG(INFO) << title;
+-      auto s = server_->catalog_manager_impl()->DumpState(&LOG(INFO), req->on_disk());
++      // Abseil's LOG() is a statement, not a stream.
++      std::ostringstream out;
++      auto s = server_->catalog_manager_impl()->DumpState(&out, req->on_disk());
++      LOG(INFO) << out.str();
+       CheckRespErrorOrSetUnknown(s, resp);
+       if (!s.ok())
+         return;
+diff -ruN a/src/yb/util/mem_tracker.cc b/src/yb/util/mem_tracker.cc
+--- a/src/yb/util/mem_tracker.cc
++++ b/src/yb/util/mem_tracker.cc
+@@ -956,7 +956,10 @@
+   std::vector<MemTrackerData> trackers;
+   CollectMemTrackerData(MemTracker::GetRootTracker(), 0, &trackers);
+   for (const auto& data : trackers) {
+-    DumpMemTrackerData(data, LOG(INFO));
++    // Abseil's LOG() is a statement, not a stream, so it cannot be an argument.
++    std::ostringstream out;
++    DumpMemTrackerData(data, out);
++    LOG(INFO) << out.str();
+   }
+ }
+ 

@@ -83,6 +83,8 @@ Patch10:	yugabyte-aarch64-baseline.patch
 Patch11:	yugabyte-lz4-1.10.patch
 # Third-party glog/gflags use the same Graviton flags. The plugin links them.
 Patch12:	yugabyte-thirdparty-aarch64-baseline.patch
+# Abseil LOG() is a statement. A few call sites still pass it as a stream.
+Patch13:	yugabyte-absl-log.patch
 
 # Upstream only supports x86_64 and aarch64 (CMakeLists fatals otherwise).
 ExclusiveArch:	%{x86_64} aarch64
@@ -225,6 +227,7 @@ Then connect with:
 %patch -P 9 -p1
 %patch -P 10 -p1
 %patch -P 11 -p1
+%patch -P 13 -p1
 
 cd %{_builddir}
 tar -xf %{SOURCE1}
