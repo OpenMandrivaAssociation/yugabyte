@@ -1,0 +1,46 @@
+flex 2.6.5 calls yypanic() from a C++ scanner and no longer provides yy_fatal_error().
+
+--- a/src/postgres/third-party-extensions/mage/src/backend/parser/ag_scanner.l
++++ b/src/postgres/third-party-extensions/mage/src/backend/parser/ag_scanner.l
+@@ -301,13 +301,14 @@
+ 
+ /*
+  * Avoid exit() on fatal scanner errors.
+- * Call yy_fatal_error() just to keep compiler quiet.
++ * flex 2.6.5 renamed yy_fatal_error() to yypanic() and does not declare
++ * the old name. ereport(ERROR) does not return.
+  */
+ #define YY_FATAL_ERROR(msg) \
+     do \
+     { \
+         ereport(ERROR, (errmsg_internal("%s", msg))); \
+-        yy_fatal_error(NULL, NULL); \
++        pg_unreachable(); \
+     } while (0)
+ 
+ /*
+
+--- a/src/yb/yql/cql/ql/parser/scanner_lex.l
++++ b/src/yb/yql/cql/ql/parser/scanner_lex.l
+@@ -61,6 +61,21 @@
+ #pragma GCC diagnostic ignored "-Wnonnull-compare"
+ #endif
+ 
++/*
++ * flex 2.6.5's C++ skeleton (%option c++ plus %option nodefault) emits
++ * yypanic("flex scanner jammed") and never declares it. The C skeleton does.
++ * yynoreturn is provided by that skeleton before this prologue.
++ */
++#ifndef yynoreturn
++#define yynoreturn __attribute__((__noreturn__))
++#endif
++static void yynoreturn yypanic(const char *msg)
++{
++	if (msg)
++		std::cerr << msg << std::endl;
++	exit(2);
++}
++
+ #undef YY_DECL
+ #define YY_DECL \
+   GramProcessor::symbol_type LexProcessor::yylex(const ScanState& scan_state)
