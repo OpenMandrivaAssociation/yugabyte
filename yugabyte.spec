@@ -89,6 +89,8 @@ Patch13:	yugabyte-absl-log.patch
 Patch14:	yugabyte-absl-log-detail.patch
 # flex 2.6.5: C++ nodefault calls yypanic(); AGE still calls yy_fatal_error().
 Patch15:	yugabyte-flex-2.6.5.patch
+# Abseil LOG() does not find operator<< for std::pair.
+Patch16:	yugabyte-absl-log-version.patch
 
 # Upstream only supports x86_64 and aarch64 (CMakeLists fatals otherwise).
 ExclusiveArch:	%{x86_64} aarch64
@@ -234,6 +236,7 @@ Then connect with:
 %patch -P 13 -p1
 %patch -P 14 -p1
 %patch -P 15 -p1
+%patch -P 16 -p1
 
 cd %{_builddir}
 tar -xf %{SOURCE1}
