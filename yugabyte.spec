@@ -87,7 +87,7 @@ Patch12:	yugabyte-thirdparty-aarch64-baseline.patch
 Patch13:	yugabyte-absl-log.patch
 # Abseil LOG() does not accept the DETAIL pseudo-severity.
 Patch14:	yugabyte-absl-log-detail.patch
-# flex 2.6.5: C++ nodefault calls yypanic(); AGE still calls yy_fatal_error().
+# flex 2.7: AGE must call yypanic() or the static handler is unused.
 Patch15:	yugabyte-flex-2.6.5.patch
 # flex 2.7 defines YY_READ_BUF_SIZE before the prologue. Postgres redefines it.
 Patch17:	yugabyte-flex-read-buf.patch
@@ -136,7 +136,7 @@ BuildRequires:	libtool-autoconf-macros
 BuildRequires:	slibtool
 BuildRequires:	libtool-base
 BuildRequires:	bison
-BuildRequires:	flex
+BuildRequires:	flex >= 2.7
 # FlexLexer.h is not in the flex package.
 BuildRequires:	flex-devel
 # Postgres is configured with --enable-nls and errors out without msgfmt.
