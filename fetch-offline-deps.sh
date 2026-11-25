@@ -9,10 +9,10 @@
 
 set -euo pipefail
 
-VERSION=2026.1.3.0
-# Pinned by v2026.1.3.0 build-support/thirdparty_archives.yml
-THIRDPARTY_COMMIT=16cc15cc1460904608d7e08b525eb871987ab6b4
-# Pinned by v2026.1.3.0 build-support/yugabyte-bash-common-sha1.txt
+VERSION=2026.1.3.1
+# Pinned by v2026.1.3.1 build-support/thirdparty_archives.yml
+THIRDPARTY_COMMIT=2e9e2b4d550a01aeb0233b8e8a7044f8da5f1da1
+# Pinned by v2026.1.3.1 build-support/yugabyte-bash-common-sha1.txt
 BASHCOMMON_COMMIT=74793a6e1712ac45dc07cd430da303c95d37f584
 
 WORKDIR=$(pwd)
