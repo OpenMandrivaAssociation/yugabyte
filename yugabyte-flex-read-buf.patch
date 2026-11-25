@@ -1,0 +1,35 @@
+flex 2.7 defines YY_READ_BUF_SIZE before the prologue. These scanners
+set a 16MB read and are compiled with -Werror, so the second define
+is a hard error. Undefine the flex default first; the later uses of
+YY_READ_BUF_SIZE then see 16777216.
+
+--- a/src/postgres/contrib/cube/cubescan.l
++++ b/src/postgres/contrib/cube/cubescan.l
+@@ -7,6 +7,7 @@
+ /* LCOV_EXCL_START */
+ 
+ /* No reason to constrain amount of data slurped */
++#undef YY_READ_BUF_SIZE
+ #define YY_READ_BUF_SIZE 16777216
+ 
+ /* Avoid exit() on fatal scanner errors (a bit ugly -- see yy_fatal_error) */
+--- a/src/postgres/contrib/seg/segscan.l
++++ b/src/postgres/contrib/seg/segscan.l
+@@ -6,6 +6,7 @@
+ /* LCOV_EXCL_START */
+ 
+ /* No reason to constrain amount of data slurped */
++#undef YY_READ_BUF_SIZE
+ #define YY_READ_BUF_SIZE 16777216
+ 
+ /* Avoid exit() on fatal scanner errors (a bit ugly -- see yy_fatal_error) */
+--- a/src/postgres/third-party-extensions/orafce/sqlscan.l
++++ b/src/postgres/third-party-extensions/orafce/sqlscan.l
+@@ -35,6 +35,7 @@ static bool extended_string = false;
+ 
+ 
+ /* No reason to constrain amount of data slurped */
++#undef YY_READ_BUF_SIZE
+ #define YY_READ_BUF_SIZE 16777216
+ 
+ /* Handles to the buffer that the lexer uses internally */

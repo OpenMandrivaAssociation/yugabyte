@@ -89,6 +89,8 @@ Patch13:	yugabyte-absl-log.patch
 Patch14:	yugabyte-absl-log-detail.patch
 # flex 2.6.5: C++ nodefault calls yypanic(); AGE still calls yy_fatal_error().
 Patch15:	yugabyte-flex-2.6.5.patch
+# flex 2.7 defines YY_READ_BUF_SIZE before the prologue. Postgres redefines it.
+Patch17:	yugabyte-flex-read-buf.patch
 # Abseil LOG() does not find operator<< for std::pair.
 Patch16:	yugabyte-absl-log-version.patch
 
@@ -237,6 +239,7 @@ Then connect with:
 %patch -P 14 -p1
 %patch -P 15 -p1
 %patch -P 16 -p1
+%patch -P 17 -p1
 
 cd %{_builddir}
 tar -xf %{SOURCE1}
